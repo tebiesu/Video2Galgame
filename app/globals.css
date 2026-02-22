@@ -464,6 +464,24 @@ body {
   box-shadow: 0 10px 18px rgba(247, 107, 172, 0.2);
 }
 .solid-btn { border: 0; background: linear-gradient(100deg, var(--rose), var(--rose-light)); color: #fff; }
+.ghost-btn:disabled,
+.solid-btn:disabled {
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+.ghost-btn:disabled {
+  opacity: 1;
+  color: #9a7f95;
+  background: #f8f1f6;
+  border-color: #e8d4e1;
+}
+.solid-btn:disabled {
+  opacity: 1;
+  color: #9a7f95;
+  background: #f3e5ee;
+  border: 1px solid #e4cad9;
+}
 
 .scene { position: relative; z-index: 1; margin-top: 12px; }
 .mode-page {
@@ -516,7 +534,7 @@ body {
   color: #fff;
 }
 .mode-select-page {
-  min-height: 520px;
+  min-height: 0;
   display: grid;
   gap: 14px;
   align-content: start;
@@ -555,8 +573,9 @@ body {
   align-items: start;
 }
 .start-layout.start-layout-focus {
-  grid-template-columns: minmax(380px, 720px);
-  justify-content: center;
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 1060px;
+  margin-inline: auto;
 }
 .start-layout > *,
 .history-layout > *,
@@ -570,7 +589,7 @@ body {
 .history-mode-page {
   height: auto;
   max-height: none;
-  min-height: 520px;
+  min-height: 0;
 }
 .single-layout { display: grid; }
 .waiting-panel {
@@ -855,6 +874,11 @@ input:focus, textarea:focus, select:focus {
 .state-failed { background: #ffe1e6; color: #ac3d4f; }
 
 .workboard { min-height: 620px; display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 16px; overflow: hidden; }
+.workboard.compact {
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+}
 .workboard-page {
   border-radius: 0;
   border: 0;
@@ -1254,7 +1278,8 @@ input:focus, textarea:focus, select:focus {
 }
 
 .queue-grid, .workshop-grid, .config-panel {
-  max-width: 1180px;
+  max-width: none;
+  width: 100%;
   min-height: 500px;
   display: grid;
   gap: 16px;
@@ -1340,7 +1365,7 @@ input:focus, textarea:focus, select:focus {
   backdrop-filter: blur(5px);
 }
 .module-shell {
-  width: min(1360px, 94vw);
+  width: min(1240px, 92vw);
   height: min(90vh, 960px);
   border: 1px solid #f0c5dc;
   border-radius: 24px;
@@ -1354,6 +1379,12 @@ input:focus, textarea:focus, select:focus {
   margin: 0;
   padding: 12px 18px 16px;
   overflow: auto;
+}
+.module-shell .mode-page {
+  height: auto;
+  max-height: none;
+  grid-template-rows: auto;
+  overflow: visible;
 }
 .module-head {
   display: flex;

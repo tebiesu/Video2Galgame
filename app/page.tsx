@@ -1369,9 +1369,6 @@ export default function HomePage(): React.ReactNode {
                 <p>同一角色包可绑定官方预设音色或自定义 voice uri。</p>
               </article>
             </div>
-            <div className="settings-actions">
-              <button className="solid-btn" onClick={openSettings}>打开统一配置面板（立绘差分/语音/背景）</button>
-            </div>
           </section>
         </section>
       ) : null}

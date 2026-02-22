@@ -60,7 +60,7 @@ export function WorkBoard({ job, pageMode = false, compact = false }: Props): Re
   }, [job]);
 
   return (
-    <section className={pageMode ? "workboard workboard-page" : "panel workboard"}>
+    <section className={pageMode ? "workboard workboard-page" : `panel workboard ${compact ? "compact" : ""}`}>
       {!compact ? (
         <div className="timeline">
           {stages.map((item, i) => {
