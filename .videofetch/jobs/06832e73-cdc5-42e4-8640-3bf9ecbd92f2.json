@@ -1,0 +1,35 @@
+{
+  "id": "06832e73-cdc5-42e4-8640-3bf9ecbd92f2",
+  "input": {
+    "platform": "bilibili",
+    "url": "https://www.bilibili.com/video/BV1fjcgzLE43?vd_source=aaeda2c783eeb5ac21033bf1599997e1",
+    "templateId": "concise_summary",
+    "customSystemPrompt": "",
+    "modelConfig": {
+      "baseUrl": "https://api.daydreaming.online",
+      "model": "hyb-Optimal/gemini-3-flash-preview",
+      "apiKey": "sk-zM0OPip48y1ZXEh13ur2czLgIvqch8NNWrWufpWJWLLHxGN5"
+    },
+    "parseOptions": {
+      "commentNum": 3,
+      "danmakuNum": 3,
+      "snapshots": "30,60",
+      "needSubs": true,
+      "needPbp": true
+    }
+  },
+  "status": "completed",
+  "stage": "completed",
+  "startedAt": "2026-02-21T10:14:33.889Z",
+  "rawParseText": "【视频信息】\n视频标题：Claude 4.6最新功能，Claude Agent Teams 保姆级入门及使用教程\n视频作者：AI随风随风\n\n【字幕内容】\n（未获取到字幕内容）\n原因: 字幕接口返回空 | 未配置 SILICONFLOW_API_KEY，无法调用ASR。\n\n\n【热门弹幕】\n用国产模型，起多个，经常会挂掉一个导致长时间阻塞\nscreen也行\n是的，\n\n\n【热门评论】\n柑桔赛高(👍4): 别逗我笑了，都说好用，我开了个pro，opus4.6ethinking对话3轮直接5小时额度清空了\n蓝色星球balala(👍4): 有一个矛盾的地方，我们开发者应该是作为 team leader 的 leader, 就叫 boss 吧。\n那么，我们似乎不应该越过 team leader 去指挥分配 teammates 的任务，\n但是交给 team leader 又不能放心，毕竟整个项目开发过程我要比它想得更清楚，才能避开例如冲突，等待之类的问题。\n遥不可及く(👍4): 我怎么感觉没啥用，用了这功能后，token耗费成倍增加，最后的成品效果提升却微乎及微，最多区别是之前达成同样的目的要微调一下而已\n\n\n【请求的视频快照】\n- 时间点 30.0s (实际匹配 29s) 的快照已保存并附加: snapshot_BV1fjcgzLE43_29s.jpg\n- 时间点 60.0s (实际匹配 58s) 的快照已保存并附加: snapshot_BV1fjcgzLE43_58s.jpg\n\n请务必使用以下 HTML <img> 标签将视频快照直接展示给用户：\n<img src=\"file:///D:/git/VideoFetch/services/video-adapter/image/bilibili/Claude 4.6最新功能，Claude Agent Teams 保姆级入门及使用教程/snapshot_BV1fjcgzLE43_29s.jpg\" width=\"400\" alt=\"Bilibili Snapshot\">\n<img src=\"file:///D:/git/VideoFetch/services/video-adapter/image/bilibili/Claude 4.6最新功能，Claude Agent Teams 保姆级入门及使用教程/snapshot_BV1fjcgzLE43_58s.jpg\" width=\"400\" alt=\"Bilibili Snapshot\">",
+  "transcriptText": "（未获取到字幕内容）\n原因: 字幕接口返回空 | 未配置 SILICONFLOW_API_KEY，无法调用ASR。",
+  "snapshots": [
+    "<img src=\"file:///D:/git/VideoFetch/services/video-adapter/image/bilibili/Claude 4.6最新功能，Claude Agent Teams 保姆级入门及使用教程/snapshot_BV1fjcgzLE43_29s.jpg\" width=\"400\" alt=\"Bilibili Snapshot\">",
+    "<img src=\"file:///D:/git/VideoFetch/services/video-adapter/image/bilibili/Claude 4.6最新功能，Claude Agent Teams 保姆级入门及使用教程/snapshot_BV1fjcgzLE43_58s.jpg\" width=\"400\" alt=\"Bilibili Snapshot\">"
+  ],
+  "warnings": [
+    "解析流程包含失败或降级信息，请留意原始文本。"
+  ],
+  "summaryMarkdown": "## 摘要（本地兜底）\nnew api 返回异常，已使用本地规则生成简版摘要。\n\n## 核心要点\n- （未获取到字幕内容） 原因: 字幕接口返回空 | 未配置 SILICONFLOW_API_KEY，无法调用ASR。\n\n## 建议\n- 请检查 new api 渠道是否返回 OpenAI 兼容 JSON。\n- 可先使用此摘要继续工作。",
+  "finishedAt": "2026-02-21T10:14:35.705Z"
+}

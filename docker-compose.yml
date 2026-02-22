@@ -1,0 +1,32 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - ADAPTER_BASE_URL=http://adapter:8000
+      - NEXT_PUBLIC_NEWAPI_BASE_URL=${NEXT_PUBLIC_NEWAPI_BASE_URL}
+      - NEXT_PUBLIC_NEWAPI_API_KEY=${NEXT_PUBLIC_NEWAPI_API_KEY}
+      - NEXT_PUBLIC_NEWAPI_MODEL=${NEXT_PUBLIC_NEWAPI_MODEL}
+    depends_on:
+      - adapter
+
+  adapter:
+    build:
+      context: ./services/video-adapter
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - YOUTUBE_PLUGIN_FILE=${YOUTUBE_PLUGIN_FILE}
+      - BILIBILI_PLUGIN_FILE=${BILIBILI_PLUGIN_FILE}
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
+      - BILIBILI_COOKIE=${BILIBILI_COOKIE}
+      - SILICONFLOW_API_KEY=${SILICONFLOW_API_KEY}
+      - SILICONFLOW_BASE_URL=${SILICONFLOW_BASE_URL}
+      - SILICONFLOW_ASR_MODEL=${SILICONFLOW_ASR_MODEL}
+      - SILICONFLOW_ENABLE_ASR_FALLBACK=${SILICONFLOW_ENABLE_ASR_FALLBACK}
+      - FFMPEG_BIN=${FFMPEG_BIN}
+      - YTDLP_BIN=${YTDLP_BIN}
