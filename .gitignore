@@ -6,3 +6,19 @@ coverage
 *.log
 __pycache__
 .pytest_cache
+.DS_Store
+Thumbs.db
+
+# build cache
+*.tsbuildinfo
+
+# local runtime data
+.videofetch/
+image/
+services/video-adapter/image/
+
+# local test artifacts
+scripts/*-error.png
+scripts/*-result.png
+scripts/*-fix.png
+scripts/ui-*.png

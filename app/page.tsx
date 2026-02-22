@@ -10,15 +10,15 @@ import { TEMPLATES } from "@/lib/templates";
 import type { JobInput, JobRecord, ModelConfig } from "@/lib/types";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-type NavTab = "home" | "start" | "party" | "saves" | "workshop" | "config";
+type NavTab = "home" | "start" | "saves" | "workshop" | "config";
 type SettingsTab = "provider" | "tts" | "motion" | "vn" | "about";
 type StartView = "input" | "waiting" | "select" | "gal" | "analysis";
 
 const CHARACTER_PRESETS: Array<{ id: string; name: string; characterName: string; stylePrompt: string }> = [
   { id: "custom", name: "自定义", characterName: "解析助手", stylePrompt: "" },
   { id: "hutao", name: "胡桃（原神）", characterName: "胡桃", stylePrompt: "请以胡桃风格总结：俏皮、古灵精怪，偶尔押韵，语气轻快但观点清晰。" },
-  { id: "murasame", name: "丛雨（千恋万花）", characterName: "丛雨", stylePrompt: "请以丛雨风格总结：礼貌温柔、古风克制，重点突出条理与情感层次。" },
-  { id: "atri", name: "亚托莉", characterName: "亚托莉", stylePrompt: "请以亚托莉风格总结：理性中带温度，清澈直接，结尾给出希望感的收束。" }
+  { id: "murasame", name: "丛雨（千恋万花）", characterName: "丛雨", stylePrompt: "请以丛雨风格总结：第一人称可偶尔用“吾辈”，语气礼貌克制、偏古风，像守护者一样认真负责；先给结论，再分点说明，措辞温柔但不拖沓，避免过度活泼和网络梗。" },
+  { id: "atri", name: "亚托莉", characterName: "亚托莉", stylePrompt: "请以亚托莉风格总结：语气清澈直接、理性高效，信息组织像任务执行报告；可偶尔点到“高性能”式自信，但不过度卖萌；输出顺序为结论→依据→行动建议，句子短、准确、可执行。" }
 ];
 
 const OFFICIAL_TTS_VOICES: Array<{ value: string; label: string }> = [
@@ -84,6 +84,37 @@ interface RolePack {
 
 const ROLE_PACKS_STORAGE_KEY = "videofetch.rolepacks.v1";
 
+const WAIT_THEME_BY_ROLE: Record<string, { primary: string; secondary: string; accent: string; glow: string; line: string }> = {
+  hutao: {
+    primary: "#f05b72",
+    secondary: "#ff9c66",
+    accent: "#ffd36b",
+    glow: "rgba(240, 91, 114, 0.24)",
+    line: "本堂主先热热场，马上把视频要点烧成一份清晰总结。"
+  },
+  murasame: {
+    primary: "#7a8bd6",
+    secondary: "#89b7ff",
+    accent: "#d8c6ff",
+    glow: "rgba(122, 139, 214, 0.24)",
+    line: "请稍候，妾身正在将内容整理为更易阅读的条目。"
+  },
+  atri: {
+    primary: "#4d8fe8",
+    secondary: "#5ed4d8",
+    accent: "#93f0ff",
+    glow: "rgba(77, 143, 232, 0.24)",
+    line: "解析模块稳定运行中，即将输出结构化结果。"
+  },
+  custom: {
+    primary: "#ee3f86",
+    secondary: "#5f9dff",
+    accent: "#ffd447",
+    glow: "rgba(238, 63, 134, 0.24)",
+    line: "正在把视频内容拆解为原文、摘要与可视化阅读素材。"
+  }
+};
+
 function toDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -91,6 +122,35 @@ function toDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
   });
+}
+
+function isQuotaExceeded(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const e = err as { name?: string; code?: number };
+  return e.name === "QuotaExceededError" || e.code === 22;
+}
+
+async function toOptimizedImageDataUrl(file: File, maxSide = 1600, quality = 0.82): Promise<string> {
+  const raw = await toDataUrl(file);
+  const img = new Image();
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error("图片解析失败"));
+    img.src = raw;
+  });
+
+  const longSide = Math.max(img.width, img.height) || 1;
+  const scale = Math.min(1, maxSide / longSide);
+  const width = Math.max(1, Math.round(img.width * scale));
+  const height = Math.max(1, Math.round(img.height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return raw;
+  ctx.drawImage(img, 0, 0, width, height);
+  return canvas.toDataURL("image/jpeg", quality);
 }
 
 function SettingsModal({
@@ -477,7 +537,7 @@ function SettingsModal({
                     onChange={async (e) => {
                       const f = e.target.files?.[0];
                       if (!f) return;
-                      onChange({ ...settings, ui: { ...settings.ui, globalBackground: await toDataUrl(f) } });
+                      onChange({ ...settings, ui: { ...settings.ui, globalBackground: await toOptimizedImageDataUrl(f) } });
                     }}
                   />
                   {settings.ui.globalBackground ? <img className="bg-preview" src={settings.ui.globalBackground} alt="bg-preview" /> : null}
@@ -518,7 +578,7 @@ function SettingsModal({
 }
 
 export default function HomePage(): React.ReactNode {
-  const homeTitle = "视频流解析导航";
+  const homeTitle = "Video2Galgame";
   const homeSubs = [
     "输入视频链接，一键生成摘要，切换到 GalGame 视觉阅读与语音演绎。",
     "支持 YouTube 与 Bilibili，全流程解析、转写、总结、配音。",
@@ -544,8 +604,8 @@ export default function HomePage(): React.ReactNode {
   const [voices, setVoices] = useState<VoiceItem[]>([]);
   const [rolePacks, setRolePacks] = useState<RolePack[]>([]);
   const [activeRolePackId, setActiveRolePackId] = useState("custom");
-  const [typedTitle, setTypedTitle] = useState("");
   const [typedSub, setTypedSub] = useState("");
+  const [cursorPress, setCursorPress] = useState(false);
   const sourceRef = useRef<EventSource | null>(null);
   const selectTimerRef = useRef<number | null>(null);
   const isModeFullscreen = activeNav === "start" && (startView === "gal" || startView === "analysis");
@@ -558,14 +618,20 @@ export default function HomePage(): React.ReactNode {
     () => rolePacks.find((x) => x.id === activeRolePackId) || rolePacks[0],
     [rolePacks, activeRolePackId]
   );
-
-  const stats = useMemo(() => {
-    const total = history.length;
-    const completed = history.filter((x) => x.status === "completed").length;
-    const running = history.filter((x) => x.status === "running").length;
-    const failed = history.filter((x) => x.status === "failed").length;
-    return { total, completed, running, failed };
-  }, [history]);
+  const waitingTheme = useMemo(() => {
+    const byId = activeRolePack ? WAIT_THEME_BY_ROLE[activeRolePack.id] : undefined;
+    if (byId) return byId;
+    if (activeRolePack?.backgroundTheme === "sunset") {
+      return {
+        primary: "#ee3f86",
+        secondary: "#5f9dff",
+        accent: "#ffd447",
+        glow: "rgba(238, 63, 134, 0.24)",
+        line: "正在渲染日落主题流程，马上进入模式选择。"
+      };
+    }
+    return WAIT_THEME_BY_ROLE.custom;
+  }, [activeRolePack]);
 
   function defaultRolePacks(): RolePack[] {
     return CHARACTER_PRESETS.map((preset) => ({
@@ -752,9 +818,32 @@ export default function HomePage(): React.ReactNode {
   }
 
   function saveSettings(): void {
-    setSettings(draftSettings);
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(draftSettings));
-    setSettingsOpen(false);
+    try {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(draftSettings));
+      setSettings(draftSettings);
+      setSettingsOpen(false);
+      return;
+    } catch (err) {
+      if (!isQuotaExceeded(err)) throw err;
+    }
+
+    const fallback: AppSettings = {
+      ...draftSettings,
+      ui: {
+        ...draftSettings.ui,
+        globalBackground: ""
+      }
+    };
+
+    try {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(fallback));
+      setSettings(fallback);
+      setDraftSettings(fallback);
+      setSettingsOpen(false);
+      window.alert("本地存储空间不足，已自动移除背景图并保存其他配置。请上传更小图片。");
+    } catch {
+      window.alert("本地存储空间不足，保存失败。请清理浏览器站点数据后重试。");
+    }
   }
 
   function updateRolePack(patch: Partial<RolePack>): void {
@@ -801,6 +890,8 @@ export default function HomePage(): React.ReactNode {
     const y = (e.clientY - rect.top) / rect.height;
     e.currentTarget.style.setProperty("--mx", `${x}`);
     e.currentTarget.style.setProperty("--my", `${y}`);
+    e.currentTarget.style.setProperty("--cx", `${e.clientX - rect.left}px`);
+    e.currentTarget.style.setProperty("--cy", `${e.clientY - rect.top}px`);
   }
 
   useEffect(() => {
@@ -858,18 +949,11 @@ export default function HomePage(): React.ReactNode {
 
   useEffect(() => {
     if (activeNav !== "home") return;
-    setTypedTitle("");
     setTypedSub("");
-    let titleIdx = 0;
     let subIdx = 0;
     let phrase = 0;
     let deleting = false;
     const timer = setInterval(() => {
-      if (titleIdx < homeTitle.length) {
-        titleIdx += 1;
-        setTypedTitle(homeTitle.slice(0, titleIdx));
-        return;
-      }
       const current = homeSubs[phrase];
       if (!deleting) {
         subIdx += 1;
@@ -897,6 +981,9 @@ export default function HomePage(): React.ReactNode {
         ["--home-overlay-blur" as string]: `${homeOverlayBlur}px`
       } as React.CSSProperties}
       onMouseMove={onMove}
+      onMouseDown={() => setCursorPress(true)}
+      onMouseUp={() => setCursorPress(false)}
+      onMouseLeave={() => setCursorPress(false)}
     >
       {activeGlobalBackground ? (
         <div className="bg-global-image" style={{ backgroundImage: `url(${activeGlobalBackground})` }} />
@@ -911,10 +998,23 @@ export default function HomePage(): React.ReactNode {
       </div>
 
       {activeNav === "home" ? (
+        <div className={`kawaii-cursor ${cursorPress ? "press" : ""}`} aria-hidden>
+          <span className="cursor-core" />
+          <span className="cursor-ring" />
+        </div>
+      ) : null}
+
+      {activeNav === "home" ? (
         <section className="landing-home panel kawaii-panel">
           <div className="landing-copy">
             <p className="jp-caption">视频解析工作室</p>
-            <h1 className="logo-title cn">{typedTitle}<span className="caret">|</span></h1>
+            <h1 className="logo-title brand-logo" aria-label="Video2Galgame">
+              <span className="brand-video">Video</span>
+              <span className="brand-two">2</span>
+              <span className="brand-gal">Galgame</span>
+              <span className="brand-glow g1" />
+              <span className="brand-glow g2" />
+            </h1>
             <p className="hero-sub">{typedSub}</p>
             <div className="hero-tags">
               <span>视频解析</span>
@@ -941,9 +1041,6 @@ export default function HomePage(): React.ReactNode {
         <button className={activeNav === "saves" ? "on" : ""} onClick={() => setActiveNav("saves")}>
           <strong>历史</strong>
         </button>
-        <button className={activeNav === "party" ? "on" : ""} onClick={() => setActiveNav("party")}>
-          <strong>队列</strong>
-        </button>
         <button className={activeNav === "workshop" ? "on" : ""} onClick={() => setActiveNav("workshop")}>
           <strong>角色工坊</strong>
         </button>
@@ -961,7 +1058,7 @@ export default function HomePage(): React.ReactNode {
           </div>
           <section className="scene single-layout">
           {startView === "input" ? (
-            <section className="start-layout">
+            <section className="start-layout start-layout-focus">
               <InputPanel
                 onSubmit={handleSubmit}
                 disabled={busy}
@@ -971,27 +1068,31 @@ export default function HomePage(): React.ReactNode {
                 summaryMode={summaryMode}
                 onSummaryModeChange={setSummaryMode}
                 onOpenSettings={openSettings}
+                roleName={settings.vn.characterName}
+                roleStylePrompt={settings.vn.stylePrompt}
               />
-              <section className="panel mode-guide">
-                <h2 className="panel-title">流程引导</h2>
-                <p className="muted">先输入视频并开始解析，完成后可进入模式选择页面。</p>
-                <div className="queue-notes">
-                  <p>当前阶段：{job?.stage ?? "等待开始"}</p>
-                  <p>当前任务：{job?.id ?? "-"}</p>
-                  {job?.summaryMarkdown ? (
-                    <button type="button" className="ghost-btn mini" onClick={() => setStartView("select")}>进入模式选择</button>
-                  ) : null}
-                  {job?.error ? <p className="error-text">失败原因：{job.error}</p> : null}
-                </div>
-              </section>
             </section>
           ) : null}
 
           {startView === "waiting" ? (
-            <section className="panel waiting-panel">
+            <section
+              className="panel waiting-panel"
+              style={
+                {
+                  ["--wait-primary" as string]: waitingTheme.primary,
+                  ["--wait-secondary" as string]: waitingTheme.secondary,
+                  ["--wait-accent" as string]: waitingTheme.accent,
+                  ["--wait-glow" as string]: waitingTheme.glow
+                } as React.CSSProperties
+              }
+            >
               <div className="waiting-header">
                 <h2 className="panel-title">正在解析视频</h2>
-                <p className="muted">二次元流光引擎正在处理视频内容，请稍候...</p>
+                <p className="muted">
+                  {summaryMode === "role"
+                    ? `${settings.vn.characterName || activeRolePack?.characterName || "解析助手"} · ${waitingTheme.line}`
+                    : "二次元流光引擎正在处理视频内容，请稍候..."}
+                </p>
               </div>
               <div className="anime-loader">
                 <span className="ribbon r1" />
@@ -1138,25 +1239,6 @@ export default function HomePage(): React.ReactNode {
           </section>
         </section>
         </div>
-      ) : null}
-
-      {activeNav === "party" ? (
-        <section className="scene single-layout">
-          <section className="panel queue-grid hover-float">
-            <h2 className="panel-title">队列与进度</h2>
-            <div className="stats-grid">
-              <article className="stat-card"><strong>{stats.total}</strong><span>总任务</span></article>
-              <article className="stat-card"><strong>{stats.running}</strong><span>进行中</span></article>
-              <article className="stat-card"><strong>{stats.completed}</strong><span>已完成</span></article>
-              <article className="stat-card"><strong>{stats.failed}</strong><span>失败</span></article>
-            </div>
-            <div className="queue-notes">
-              <p>当前阶段：{job?.stage ?? "暂无任务"}</p>
-              <p>当前任务：{job?.id ?? "-"}</p>
-              {job?.error ? <p className="error-text">失败原因：{job.error}</p> : null}
-            </div>
-          </section>
-        </section>
       ) : null}
 
       {activeNav === "workshop" ? (

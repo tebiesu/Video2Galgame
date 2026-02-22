@@ -14,6 +14,8 @@ interface Props {
   summaryMode: "template" | "role";
   onSummaryModeChange: (mode: "template" | "role") => void;
   onOpenSettings: () => void;
+  roleName: string;
+  roleStylePrompt: string;
 }
 
 const platformOptions = [
@@ -29,7 +31,9 @@ export function InputPanel({
   onTemplateChange,
   summaryMode,
   onSummaryModeChange,
-  onOpenSettings
+  onOpenSettings,
+  roleName,
+  roleStylePrompt
 }: Props): React.ReactNode {
   const [platform, setPlatform] = useState<Platform>("youtube");
   const [url, setUrl] = useState("");
@@ -133,18 +137,20 @@ export function InputPanel({
       ) : (
         <div className="field role-config-hint">
           <span>角色总结配置</span>
-          <p className="muted">角色预设、风格词、立绘差分在设置中心统一配置。</p>
+          <p className="muted">当前角色：{roleName || "解析助手"}</p>
+          <p className="muted">角色风格词：{roleStylePrompt?.trim() ? roleStylePrompt : "未设置，将按默认角色口吻输出。"}</p>
+          <p className="muted">你在下方填写的“自定义系统提示词”会拼接在角色风格词后一起生效。</p>
           <button type="button" className="ghost-btn mini" onClick={onOpenSettings}>打开设置中心</button>
         </div>
       )}
 
       <label className="field">
-        <span>自定义系统提示词</span>
+        <span>{summaryMode === "role" ? "追加系统提示词（与角色风格词拼接）" : "自定义系统提示词"}</span>
         <textarea
           value={customSystemPrompt}
           onChange={(e) => setCustomSystemPrompt(e.target.value)}
           rows={4}
-          placeholder="例如：重点关注商业模式与增长策略"
+          placeholder={summaryMode === "role" ? "例如：先给结论，再给证据，最后给行动建议" : "例如：重点关注商业模式与增长策略"}
           disabled={disabled}
         />
       </label>
