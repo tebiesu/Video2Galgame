@@ -16,6 +16,7 @@ interface Props {
   onOpenSettings: () => void;
   roleName: string;
   roleStylePrompt: string;
+  submitError?: string;
 }
 
 const platformOptions = [
@@ -33,7 +34,8 @@ export function InputPanel({
   onSummaryModeChange,
   onOpenSettings,
   roleName,
-  roleStylePrompt
+  roleStylePrompt,
+  submitError
 }: Props): React.ReactNode {
   const [platform, setPlatform] = useState<Platform>("youtube");
   const [url, setUrl] = useState("");
@@ -88,6 +90,7 @@ export function InputPanel({
       {!providerReady ? (
         <p className="warn-text">Provider 未配置完整，请先在「设置」中填写 Base URL / API Key / Model。</p>
       ) : null}
+      {submitError ? <p className="error-text">提交失败：{submitError}</p> : null}
 
       <label className="field">
         <span>平台</span>
@@ -113,7 +116,7 @@ export function InputPanel({
 
       <label className="field">
         <span>总结模式</span>
-        <div className="switch-row">
+        <div className="switch-row mode-switch-row">
           <button type="button" className={`switch-chip ${summaryMode === "template" ? "on" : ""}`} onClick={() => onSummaryModeChange("template")}>
             <span className="dot" /> 模板总结
           </button>
@@ -123,26 +126,36 @@ export function InputPanel({
         </div>
       </label>
 
-      {summaryMode === "template" ? (
-        <label className="field">
-          <span>预设模板</span>
-          <FancySelect
-            value={templateId}
-            options={TEMPLATES.map((tpl) => ({ value: tpl.id, label: tpl.name }))}
-            onChange={onTemplateChange}
-            disabled={disabled}
-          />
-          <small className="muted">{selectedTemplate.description}</small>
-        </label>
-      ) : (
-        <div className="field role-config-hint">
-          <span>角色总结配置</span>
-          <p className="muted">当前角色：{roleName || "解析助手"}</p>
-          <p className="muted">角色风格词：{roleStylePrompt?.trim() ? roleStylePrompt : "未设置，将按默认角色口吻输出。"}</p>
-          <p className="muted">你在下方填写的“自定义系统提示词”会拼接在角色风格词后一起生效。</p>
+      <section className="field mode-config-card">
+        <span>{summaryMode === "template" ? "模板总结配置" : "角色总结配置"}</span>
+        <div className="mode-config-body">
+          <div className="mode-config-scroll">
+            {summaryMode === "template" ? (
+              <>
+                <label className="field">
+                  <span>预设模板</span>
+                  <FancySelect
+                    value={templateId}
+                    options={TEMPLATES.map((tpl) => ({ value: tpl.id, label: tpl.name }))}
+                    onChange={onTemplateChange}
+                    disabled={disabled}
+                  />
+                </label>
+                <p className="muted mode-config-desc">{selectedTemplate.description}</p>
+              </>
+            ) : (
+              <>
+                <p className="muted">当前角色：{roleName || "解析助手"}</p>
+                <p className="muted">角色风格词：{roleStylePrompt?.trim() ? roleStylePrompt : "未设置，将按默认角色口吻输出。"}</p>
+                <p className="muted mode-config-desc">你在下方填写的“自定义系统提示词”会拼接在角色风格词后一起生效。</p>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="mode-config-actions">
           <button type="button" className="ghost-btn mini" onClick={onOpenSettings}>打开设置中心</button>
         </div>
-      )}
+      </section>
 
       <label className="field">
         <span>{summaryMode === "role" ? "追加系统提示词（与角色风格词拼接）" : "自定义系统提示词"}</span>

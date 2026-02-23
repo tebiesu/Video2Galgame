@@ -13,9 +13,23 @@ function normalizeApiKey(input?: string): string {
 }
 
 export async function GET(request: Request): Promise<Response> {
-  const url = new URL(request.url);
-  const baseUrl = toBaseUrl(url.searchParams.get("baseUrl") || undefined);
-  const apiKey = normalizeApiKey(url.searchParams.get("apiKey") || undefined);
+  void request;
+  return NextResponse.json(
+    { error: "GET 已禁用，请改用 PUT 并在 JSON body 传入 baseUrl 与 apiKey。" },
+    { status: 405 }
+  );
+}
+
+export async function PUT(request: Request): Promise<Response> {
+  let body: { baseUrl?: string; apiKey?: string };
+  try {
+    body = (await request.json()) as { baseUrl?: string; apiKey?: string };
+  } catch {
+    return NextResponse.json({ error: "请求体不是合法 JSON" }, { status: 400 });
+  }
+
+  const baseUrl = toBaseUrl(body.baseUrl);
+  const apiKey = normalizeApiKey(body.apiKey);
   if (!apiKey) return NextResponse.json({ error: "缺少 API Key" }, { status: 400 });
 
   const endpoint = `${baseUrl}/audio/voice/list`;
@@ -24,7 +38,10 @@ export async function GET(request: Request): Promise<Response> {
   });
   const text = await res.text();
   if (!res.ok) {
-    return NextResponse.json({ error: "拉取音色列表失败", detail: `${endpoint} -> HTTP ${res.status}: ${text.slice(0, 280)}` }, { status: 502 });
+    return NextResponse.json(
+      { error: "拉取音色列表失败", detail: `${endpoint} -> HTTP ${res.status}: ${text.slice(0, 280)}` },
+      { status: 502 }
+    );
   }
   return new Response(text, { status: 200, headers: { "Content-Type": "application/json" } });
 }
@@ -54,10 +71,12 @@ export async function POST(request: Request): Promise<Response> {
     headers: { Authorization: `Bearer ${apiKey}` },
     body: form
   });
-  const body = await res.text();
+  const responseText = await res.text();
   if (!res.ok) {
-    return NextResponse.json({ error: "上传参考音频失败", detail: `${endpoint} -> HTTP ${res.status}: ${body.slice(0, 320)}` }, { status: 502 });
+    return NextResponse.json(
+      { error: "上传参考音频失败", detail: `${endpoint} -> HTTP ${res.status}: ${responseText.slice(0, 320)}` },
+      { status: 502 }
+    );
   }
-  return new Response(body, { status: 200, headers: { "Content-Type": "application/json" } });
+  return new Response(responseText, { status: 200, headers: { "Content-Type": "application/json" } });
 }
-

@@ -5,6 +5,8 @@ import { HistoryPanel } from "@/components/HistoryPanel";
 import { InputPanel } from "@/components/InputPanel";
 import { WorkBoard } from "@/components/WorkBoard";
 import { FancySelect } from "@/components/FancySelect";
+import { isQuotaExceeded, toDataUrl, toOptimizedImageDataUrl } from "@/lib/clientUtils";
+import { readMedia, removeMedia, replaceMedia } from "@/lib/mediaStore";
 import { defaultSettings, normalizeSettings, SETTINGS_STORAGE_KEY, type AppSettings, type TtsConfig } from "@/lib/settings";
 import { TEMPLATES } from "@/lib/templates";
 import type { JobInput, JobRecord, ModelConfig } from "@/lib/types";
@@ -74,15 +76,47 @@ interface RolePack {
   stylePrompt: string;
   recommendedVoice: string;
   backgroundTheme: string;
+  thumbnail?: string;
+  thumbnailRef?: string;
   backgroundImage?: string;
   sprites: {
     neutral?: string;
     happy?: string;
     serious?: string;
+    sad?: string;
+    angry?: string;
   };
 }
 
 const ROLE_PACKS_STORAGE_KEY = "videofetch.rolepacks.v1";
+const SHARED_APPEARANCE_STORAGE_KEY = "videofetch.shared.appearance.v1";
+const GLOBAL_BG_MEDIA_REF_STORAGE_KEY = "videofetch.globalbg.ref.v1";
+
+function roleAppearanceStorageKey(roleId: string): string {
+  return `videofetch.role.appearance.v1.${roleId}`;
+}
+
+type SharedAppearance = {
+  backgroundImage?: string;
+  backgroundImageRef?: string;
+  backgroundMusic?: string;
+  backgroundMusicRef?: string;
+  backgroundMusicName?: string;
+  sprites: {
+    neutral?: string;
+    happy?: string;
+    serious?: string;
+    sad?: string;
+    angry?: string;
+  };
+  spriteRefs?: {
+    neutral?: string;
+    happy?: string;
+    serious?: string;
+    sad?: string;
+    angry?: string;
+  };
+};
 
 const WAIT_THEME_BY_ROLE: Record<string, { primary: string; secondary: string; accent: string; glow: string; line: string }> = {
   hutao: {
@@ -115,43 +149,55 @@ const WAIT_THEME_BY_ROLE: Record<string, { primary: string; secondary: string; a
   }
 };
 
-function toDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
+
+function UploadPreviewField({
+  label,
+  value,
+  onPick,
+  onClear
+}: {
+  label: string;
+  value?: string;
+  onPick: (file: File) => Promise<void> | void;
+  onClear: () => void;
+}): React.ReactNode {
+  const inputId = `upload-${label}`;
+  return (
+    <div className="field">
+      <span className="field-title-row">
+        <span>{label}</span>
+        <small className={`upload-state ${value ? "ok" : ""}`}>{value ? "已配置" : "未配置"}</small>
+      </span>
+      {value ? (
+        <div className="role-preview-wrap">
+          <img className={`role-preview-img ${label.includes("背景") ? "role-preview-bg" : ""}`} src={value} alt={`${label} preview`} />
+          <button type="button" className="preview-clear-btn" onClick={onClear} aria-label={`清除${label}`}>
+            ×
+          </button>
+        </div>
+      ) : (
+        <label className="upload-shell" htmlFor={inputId}>
+          <strong>选择图片</strong>
+          <small>点击上传 {label}</small>
+        </label>
+      )}
+      <input
+        id={inputId}
+        className="upload-native"
+        type="file"
+        accept="image/*"
+        onChange={async (e) => {
+          const inputEl = e.currentTarget;
+          const f = e.target.files?.[0];
+          if (!f) return;
+          await onPick(f);
+          if (inputEl) inputEl.value = "";
+        }}
+      />
+    </div>
+  );
 }
 
-function isQuotaExceeded(err: unknown): boolean {
-  if (!err || typeof err !== "object") return false;
-  const e = err as { name?: string; code?: number };
-  return e.name === "QuotaExceededError" || e.code === 22;
-}
-
-async function toOptimizedImageDataUrl(file: File, maxSide = 1600, quality = 0.82): Promise<string> {
-  const raw = await toDataUrl(file);
-  const img = new Image();
-  await new Promise<void>((resolve, reject) => {
-    img.onload = () => resolve();
-    img.onerror = () => reject(new Error("图片解析失败"));
-    img.src = raw;
-  });
-
-  const longSide = Math.max(img.width, img.height) || 1;
-  const scale = Math.min(1, maxSide / longSide);
-  const width = Math.max(1, Math.round(img.width * scale));
-  const height = Math.max(1, Math.round(img.height * scale));
-
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return raw;
-  ctx.drawImage(img, 0, 0, width, height);
-  return canvas.toDataURL("image/jpeg", quality);
-}
 
 function SettingsModal({
   open,
@@ -174,7 +220,7 @@ function SettingsModal({
   onClose: () => void;
   settings: AppSettings;
   onChange: (next: AppSettings) => void;
-  onSave: () => void;
+  onSave: () => Promise<void> | void;
   onRunCheck: (provider: ModelConfig) => Promise<void>;
   onRunTtsTest: (tts: TtsConfig) => Promise<void>;
   onUploadVoice: (tts: TtsConfig, file: File, customName: string, text: string) => Promise<void>;
@@ -590,7 +636,7 @@ export default function HomePage(): React.ReactNode {
   const [jobId, setJobId] = useState("");
   const [activeNav, setActiveNav] = useState<NavTab>("home");
   const [startView, setStartView] = useState<StartView>("input");
-  const [historyMode, setHistoryMode] = useState<"select" | "gal" | "analysis">("select");
+  const [historyMode, setHistoryMode] = useState<"list" | "select" | "gal" | "analysis">("list");
   const [summaryMode, setSummaryMode] = useState<"template" | "role">("template");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(defaultSettings());
@@ -604,11 +650,18 @@ export default function HomePage(): React.ReactNode {
   const [voices, setVoices] = useState<VoiceItem[]>([]);
   const [rolePacks, setRolePacks] = useState<RolePack[]>([]);
   const [activeRolePackId, setActiveRolePackId] = useState("custom");
+  const [workshopView, setWorkshopView] = useState<"list" | "detail">("list");
+  const [sharedAppearance, setSharedAppearance] = useState<SharedAppearance>({ sprites: {} });
+  const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [typedSub, setTypedSub] = useState("");
   const [cursorPress, setCursorPress] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [waitElapsedSec, setWaitElapsedSec] = useState(0);
   const sourceRef = useRef<EventSource | null>(null);
   const selectTimerRef = useRef<number | null>(null);
-  const isModeFullscreen = activeNav === "start" && (startView === "gal" || startView === "analysis");
+  const isModeFullscreen =
+    (activeNav === "start" && (startView === "gal" || startView === "analysis")) ||
+    (activeNav === "saves" && historyMode === "gal");
   const activeGlobalBackground = settingsOpen ? draftSettings.ui.globalBackground : settings.ui.globalBackground;
   const globalOverlayTransparency = Math.max(0, Math.min(100, settings.ui.homeOverlayTransparency ?? 72));
   const globalOverlayOpacity = Number((1 - globalOverlayTransparency / 100).toFixed(2));
@@ -645,9 +698,104 @@ export default function HomePage(): React.ReactNode {
     }));
   }
 
-  function saveRolePacks(next: RolePack[]): void {
+  function showNotice(type: "success" | "error", text: string): void {
+    setNotice({ type, text });
+    window.setTimeout(() => setNotice(null), 1800);
+  }
+
+  function sanitizeSettingsForStorage(next: AppSettings): AppSettings {
+    return {
+      ...next,
+      vn: {
+        ...next.vn,
+        backgroundImage: "",
+        sprites: {}
+      },
+      ui: {
+        ...next.ui,
+        globalBackground: ""
+      }
+    };
+  }
+
+  function sanitizeRolePacks(next: RolePack[]): RolePack[] {
+    return next.map((x) => ({
+      ...x,
+      thumbnail: "",
+      backgroundImage: "",
+      sprites: {
+        neutral: "",
+        happy: "",
+        serious: "",
+        sad: "",
+        angry: ""
+      }
+    }));
+  }
+
+  async function saveSharedAppearance(next: SharedAppearance, roleId = activeRolePackId): Promise<void> {
+    const normalized: SharedAppearance = {
+      backgroundImage: next.backgroundImage || "",
+      backgroundImageRef: next.backgroundImageRef || "",
+      backgroundMusic: next.backgroundMusic || "",
+      backgroundMusicRef: next.backgroundMusicRef || "",
+      backgroundMusicName: next.backgroundMusicName || "",
+      sprites: { ...(next.sprites || {}) },
+      spriteRefs: { ...(next.spriteRefs || {}) }
+    };
+    setSharedAppearance(normalized);
+    try {
+      localStorage.setItem(
+        roleAppearanceStorageKey(roleId || "custom"),
+        JSON.stringify({
+          backgroundImageRef: normalized.backgroundImageRef || "",
+          backgroundMusicRef: normalized.backgroundMusicRef || "",
+          backgroundMusicName: normalized.backgroundMusicName || "",
+          spriteRefs: { ...(normalized.spriteRefs || {}) }
+        })
+      );
+    } catch (err) {
+      if (isQuotaExceeded(err)) {
+        showNotice("error", "图片保存失败：本地空间不足，请使用更小图片。");
+        return;
+      }
+      throw err;
+    }
+    if ((settings.vn.presetId || "custom") === (roleId || "custom")) {
+      const nextSettings: AppSettings = {
+        ...settings,
+        vn: {
+          ...settings.vn,
+          backgroundImage: normalized.backgroundImage || "",
+          backgroundMusic: normalized.backgroundMusic || "",
+          backgroundMusicName: normalized.backgroundMusicName || "",
+          sprites: { ...(normalized.sprites || {}) }
+        }
+      };
+      setSettings(nextSettings);
+      setDraftSettings(nextSettings);
+      try {
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(sanitizeSettingsForStorage(nextSettings)));
+      } catch {
+        // 忽略设置持久化失败，不打断主流程
+      }
+    }
+  }
+
+  function saveRolePacks(next: RolePack[]): boolean {
+    const sanitized = sanitizeRolePacks(next);
     setRolePacks(next);
-    localStorage.setItem(ROLE_PACKS_STORAGE_KEY, JSON.stringify(next));
+    try {
+      localStorage.setItem(ROLE_PACKS_STORAGE_KEY, JSON.stringify(sanitized));
+      showNotice("success", "角色包已保存");
+      return true;
+    } catch (err) {
+      if (isQuotaExceeded(err)) {
+        showNotice("error", "角色工坊保存失败：本地空间不足，请使用更小的立绘/背景图。");
+        return false;
+      }
+      throw err;
+    }
   }
 
   async function loadHistory(): Promise<void> {
@@ -661,6 +809,8 @@ export default function HomePage(): React.ReactNode {
     const res = await fetch(`/api/jobs/${id}`);
     if (!res.ok) {
       setBusy(false);
+      setSubmitError(`任务状态拉取失败（HTTP ${res.status}）`);
+      setStartView("input");
       return;
     }
     const payload = (await res.json()) as JobRecord;
@@ -683,9 +833,13 @@ export default function HomePage(): React.ReactNode {
   }
 
   async function handleSubmit(input: JobInput): Promise<void> {
+    setSubmitError("");
     setBusy(true);
     setActiveNav("start");
     setStartView("waiting");
+    setWaitElapsedSec(0);
+    setJob(null);
+    setJobId("");
     sourceRef.current?.close();
     sourceRef.current = null;
     const rolePrompt = summaryMode === "role" ? settings.vn.stylePrompt.trim() : "";
@@ -702,6 +856,9 @@ export default function HomePage(): React.ReactNode {
 
     if (!res.ok) {
       setBusy(false);
+      const payload = (await res.json().catch(() => ({}))) as { error?: string };
+      setSubmitError(payload.error || `创建任务失败（HTTP ${res.status}）`);
+      setStartView("input");
       return;
     }
 
@@ -766,11 +923,11 @@ export default function HomePage(): React.ReactNode {
   async function loadVoices(tts: TtsConfig): Promise<void> {
     setVoiceBusy(true);
     try {
-      const q = new URLSearchParams({
-        baseUrl: tts.baseUrl,
-        apiKey: tts.apiKey
+      const res = await fetch("/api/tts/siliconflow/voice", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ baseUrl: tts.baseUrl, apiKey: tts.apiKey })
       });
-      const res = await fetch(`/api/tts/siliconflow/voice?${q.toString()}`);
       const payload = (await res.json().catch(() => ({}))) as { data?: Array<{ uri: string; customName?: string }>; detail?: string; error?: string } | Array<{ uri: string; customName?: string }>;
       if (!res.ok) {
         const msg = Array.isArray(payload) ? "拉取音色失败" : payload.error || "拉取音色失败";
@@ -817,52 +974,149 @@ export default function HomePage(): React.ReactNode {
     setSettingsOpen(true);
   }
 
-  function saveSettings(): void {
+  async function saveSettings(): Promise<void> {
+    let nextBgRef = localStorage.getItem(GLOBAL_BG_MEDIA_REF_STORAGE_KEY) || "";
     try {
-      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(draftSettings));
+      const bg = draftSettings.ui.globalBackground || "";
+      if (bg) {
+        nextBgRef = await replaceMedia(nextBgRef, bg, "image", "global-background");
+        localStorage.setItem(GLOBAL_BG_MEDIA_REF_STORAGE_KEY, nextBgRef);
+      } else if (nextBgRef) {
+        await removeMedia(nextBgRef);
+        nextBgRef = "";
+        localStorage.removeItem(GLOBAL_BG_MEDIA_REF_STORAGE_KEY);
+      }
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(sanitizeSettingsForStorage(draftSettings)));
       setSettings(draftSettings);
       setSettingsOpen(false);
-      return;
+      showNotice("success", "设置已保存");
     } catch (err) {
-      if (!isQuotaExceeded(err)) throw err;
-    }
-
-    const fallback: AppSettings = {
-      ...draftSettings,
-      ui: {
-        ...draftSettings.ui,
-        globalBackground: ""
+      if (isQuotaExceeded(err)) {
+        showNotice("error", "本地空间不足，建议清理浏览器站点数据后重试。");
+        return;
       }
-    };
-
-    try {
-      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(fallback));
-      setSettings(fallback);
-      setDraftSettings(fallback);
-      setSettingsOpen(false);
-      window.alert("本地存储空间不足，已自动移除背景图并保存其他配置。请上传更小图片。");
-    } catch {
-      window.alert("本地存储空间不足，保存失败。请清理浏览器站点数据后重试。");
+      throw err;
     }
   }
 
   function updateRolePack(patch: Partial<RolePack>): void {
     if (!activeRolePack) return;
+    if (Object.prototype.hasOwnProperty.call(patch, "backgroundImage")) {
+      void saveSharedAppearance({
+        ...sharedAppearance,
+        backgroundImage: patch.backgroundImage || "",
+        backgroundImageRef: patch.backgroundImage ? sharedAppearance.backgroundImageRef || "" : ""
+      });
+      return;
+    }
     const next = rolePacks.map((x) => (x.id === activeRolePack.id ? { ...x, ...patch } : x));
     saveRolePacks(next);
   }
 
-  function updateRolePackSprite(kind: "neutral" | "happy" | "serious", value?: string): void {
+  async function setRolePackThumbnail(file: File | null): Promise<void> {
     if (!activeRolePack) return;
-    const next = rolePacks.map((x) =>
-      x.id === activeRolePack.id
-        ? { ...x, sprites: { ...x.sprites, [kind]: value } }
-        : x
-    );
-    saveRolePacks(next);
+    try {
+      const prevRef = activeRolePack.thumbnailRef || "";
+      if (!file) {
+        if (prevRef) await removeMedia(prevRef).catch(() => undefined);
+        const next = rolePacks.map((x) =>
+          x.id === activeRolePack.id ? { ...x, thumbnail: "", thumbnailRef: "" } : x
+        );
+        saveRolePacks(next);
+        return;
+      }
+      const data = await toOptimizedImageDataUrl(file, 960, 0.82);
+      const ref = await replaceMedia(prevRef, data, "image", `thumb-${activeRolePack.id}`);
+      const next = rolePacks.map((x) =>
+        x.id === activeRolePack.id ? { ...x, thumbnail: data, thumbnailRef: ref } : x
+      );
+      saveRolePacks(next);
+    } catch {
+      showNotice("error", "缩略图保存失败，请更换更小图片。");
+    }
+  }
+
+  async function setSharedSprite(kind: "neutral" | "happy" | "serious" | "sad" | "angry", file: File | null): Promise<void> {
+    try {
+      const prevRef = sharedAppearance.spriteRefs?.[kind] || "";
+      if (!file) {
+        if (prevRef) await removeMedia(prevRef).catch(() => undefined);
+        void saveSharedAppearance({
+          ...sharedAppearance,
+          sprites: { ...(sharedAppearance.sprites || {}), [kind]: "" },
+          spriteRefs: { ...(sharedAppearance.spriteRefs || {}), [kind]: "" }
+        });
+        return;
+      }
+      const data = await toOptimizedImageDataUrl(file, 1280, 0.8);
+      const ref = await replaceMedia(prevRef, data, "image", `sprite-${kind}`);
+      void saveSharedAppearance({
+        ...sharedAppearance,
+        sprites: { ...(sharedAppearance.sprites || {}), [kind]: data },
+        spriteRefs: { ...(sharedAppearance.spriteRefs || {}), [kind]: ref }
+      });
+    } catch {
+      showNotice("error", "立绘保存失败，请更换更小图片。");
+    }
+  }
+
+  async function setSharedBackground(file: File | null): Promise<void> {
+    try {
+      const prevRef = sharedAppearance.backgroundImageRef || "";
+      if (!file) {
+        if (prevRef) await removeMedia(prevRef).catch(() => undefined);
+        void saveSharedAppearance({
+          ...sharedAppearance,
+          backgroundImage: "",
+          backgroundImageRef: ""
+        });
+        return;
+      }
+      const data = await toOptimizedImageDataUrl(file, 1600, 0.82);
+      const ref = await replaceMedia(prevRef, data, "image", "gal-background");
+      void saveSharedAppearance({
+        ...sharedAppearance,
+        backgroundImage: data,
+        backgroundImageRef: ref
+      });
+    } catch {
+      showNotice("error", "背景图保存失败，请更换更小图片。");
+    }
+  }
+
+  async function setSharedBackgroundMusic(file: File | null): Promise<void> {
+    try {
+      const prevRef = sharedAppearance.backgroundMusicRef || "";
+      if (!file) {
+        if (prevRef) await removeMedia(prevRef).catch(() => undefined);
+        void saveSharedAppearance({
+          ...sharedAppearance,
+          backgroundMusic: "",
+          backgroundMusicRef: "",
+          backgroundMusicName: ""
+        });
+        return;
+      }
+      const data = await toDataUrl(file);
+      const ref = await replaceMedia(prevRef, data, "audio", file.name);
+      void saveSharedAppearance({
+        ...sharedAppearance,
+        backgroundMusic: data,
+        backgroundMusicRef: ref,
+        backgroundMusicName: file.name
+      });
+    } catch {
+      showNotice("error", "背景音乐保存失败，请更换文件重试。");
+    }
+  }
+
+  function persistRolePack(): void {
+    if (!activeRolePack) return;
+    void saveRolePacks(rolePacks);
   }
 
   function applyRolePack(pack: RolePack): void {
+    setActiveRolePackId(pack.id);
     const nextSettings: AppSettings = {
       ...settings,
       tts: {
@@ -874,14 +1128,48 @@ export default function HomePage(): React.ReactNode {
         presetId: pack.id,
         characterName: pack.characterName,
         stylePrompt: pack.stylePrompt,
-        defaultBackground: pack.backgroundTheme || settings.vn.defaultBackground
+        defaultBackground: pack.backgroundTheme || settings.vn.defaultBackground,
+        backgroundImage: sharedAppearance.backgroundImage || "",
+        backgroundMusic: sharedAppearance.backgroundMusic || "",
+        backgroundMusicName: sharedAppearance.backgroundMusicName || "",
+        sprites: { ...(sharedAppearance.sprites || {}) }
       }
     };
     setSettings(nextSettings);
     setDraftSettings(nextSettings);
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(sanitizeSettingsForStorage(nextSettings)));
     setSummaryMode("role");
     setActiveNav("start");
+  }
+
+  function syncAppearanceFromGalgame(next: {
+    sprites: RolePack["sprites"];
+    backgroundImage: string;
+    backgroundImageRef?: string;
+    backgroundMusic?: string;
+    backgroundMusicRef?: string;
+    backgroundMusicName?: string;
+    roleId?: string;
+  }): void {
+    const inferredHistoryRoleId =
+      activeNav === "saves" && job?.input.summaryMode === "role"
+        ? rolePacks.find((x) => x.characterName === (job?.input.roleName || "").trim())?.id || ""
+        : "";
+    const roleId =
+      next.roleId ||
+      inferredHistoryRoleId ||
+      (summaryMode === "role" ? activeRolePackId : "") ||
+      settings.vn.presetId ||
+      "custom";
+    void saveSharedAppearance({
+      backgroundImage: next.backgroundImage || "",
+      backgroundImageRef: next.backgroundImageRef || sharedAppearance.backgroundImageRef || "",
+      backgroundMusic: next.backgroundMusic || sharedAppearance.backgroundMusic || "",
+      backgroundMusicRef: next.backgroundMusicRef || sharedAppearance.backgroundMusicRef || "",
+      backgroundMusicName: next.backgroundMusicName || sharedAppearance.backgroundMusicName || "",
+      sprites: { ...(next.sprites || {}) },
+      spriteRefs: { ...(sharedAppearance.spriteRefs || {}) }
+    }, roleId || "custom");
   }
 
   function onMove(e: React.MouseEvent<HTMLElement>): void {
@@ -896,25 +1184,42 @@ export default function HomePage(): React.ReactNode {
 
   useEffect(() => {
     void loadHistory();
+    let bootSettings = defaultSettings();
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
     if (raw) {
       try {
         const parsed = normalizeSettings(JSON.parse(raw) as Partial<AppSettings>);
+        bootSettings = parsed;
         setSettings(parsed);
         setDraftSettings(parsed);
       } catch {
         const fallback = defaultSettings();
+        bootSettings = fallback;
         setSettings(fallback);
         setDraftSettings(fallback);
       }
+    } else {
+      bootSettings = defaultSettings();
     }
     const roleRaw = localStorage.getItem(ROLE_PACKS_STORAGE_KEY);
+    const hydrateRolePacks = async (base: RolePack[]): Promise<RolePack[]> => {
+      const out = await Promise.all(
+        base.map(async (pack) => {
+          const thumb = await readMedia(pack.thumbnailRef || "");
+          return { ...pack, thumbnail: thumb || "" };
+        })
+      );
+      return out;
+    };
     if (roleRaw) {
       try {
         const parsed = JSON.parse(roleRaw) as RolePack[];
         if (Array.isArray(parsed) && parsed.length) {
-          setRolePacks(parsed);
-          setActiveRolePackId(parsed[0].id);
+          const sanitized = sanitizeRolePacks(parsed);
+          void hydrateRolePacks(sanitized).then((hydrated) => {
+            setRolePacks(hydrated);
+            setActiveRolePackId(hydrated[0].id);
+          });
         } else {
           const defaults = defaultRolePacks();
           setRolePacks(defaults);
@@ -930,15 +1235,129 @@ export default function HomePage(): React.ReactNode {
       setRolePacks(defaults);
       setActiveRolePackId(defaults[0].id);
     }
+
+    const hydrateMedia = async (): Promise<void> => {
+      const bgRef = localStorage.getItem(GLOBAL_BG_MEDIA_REF_STORAGE_KEY) || "";
+      if (bgRef) {
+        const bg = await readMedia(bgRef);
+        if (bg) {
+          setSettings((prev) => ({ ...prev, ui: { ...prev.ui, globalBackground: bg } }));
+          setDraftSettings((prev) => ({ ...prev, ui: { ...prev.ui, globalBackground: bg } }));
+        }
+      }
+
+      setSharedAppearance({
+        backgroundImage: bootSettings.vn.backgroundImage || "",
+        sprites: { ...(bootSettings.vn.sprites || {}) },
+        backgroundMusic: bootSettings.vn.backgroundMusic || "",
+        backgroundMusicName: bootSettings.vn.backgroundMusicName || ""
+      });
+    };
+    void hydrateMedia();
   }, []);
 
   useEffect(() => {
+    if (!activeRolePackId) return;
+    const loadRoleAppearance = async (): Promise<void> => {
+      const key = roleAppearanceStorageKey(activeRolePackId);
+      const raw = localStorage.getItem(key) || (activeRolePackId === "custom" ? localStorage.getItem(SHARED_APPEARANCE_STORAGE_KEY) : "");
+      if (!raw) {
+        const fallback: SharedAppearance = { sprites: {} };
+        setSharedAppearance(fallback);
+        if ((settings.vn.presetId || "custom") === activeRolePackId) {
+          const nextSettings: AppSettings = {
+            ...settings,
+            vn: {
+              ...settings.vn,
+              backgroundImage: "",
+              backgroundMusic: "",
+              backgroundMusicName: "",
+              sprites: {}
+            }
+          };
+          setSettings(nextSettings);
+          setDraftSettings(nextSettings);
+        }
+        return;
+      }
+      try {
+        const parsed = JSON.parse(raw) as SharedAppearance;
+        const spriteRefs = { ...(parsed?.spriteRefs || {}) };
+        const merged: SharedAppearance = {
+          backgroundImageRef: parsed?.backgroundImageRef || "",
+          backgroundImage: await readMedia(parsed?.backgroundImageRef || ""),
+          backgroundMusicRef: parsed?.backgroundMusicRef || "",
+          backgroundMusicName: parsed?.backgroundMusicName || "",
+          backgroundMusic: await readMedia(parsed?.backgroundMusicRef || ""),
+          sprites: {
+            neutral: await readMedia(spriteRefs.neutral || ""),
+            happy: await readMedia(spriteRefs.happy || ""),
+            serious: await readMedia(spriteRefs.serious || ""),
+            sad: await readMedia(spriteRefs.sad || ""),
+            angry: await readMedia(spriteRefs.angry || "")
+          },
+          spriteRefs
+        };
+        setSharedAppearance(merged);
+        if ((settings.vn.presetId || "custom") === activeRolePackId) {
+          const nextSettings: AppSettings = {
+            ...settings,
+            vn: {
+              ...settings.vn,
+              backgroundImage: merged.backgroundImage || "",
+              backgroundMusic: merged.backgroundMusic || "",
+              backgroundMusicName: merged.backgroundMusicName || "",
+              sprites: { ...(merged.sprites || {}) }
+            }
+          };
+          setSettings(nextSettings);
+          setDraftSettings(nextSettings);
+        }
+      } catch {
+        setSharedAppearance({ sprites: {} });
+      }
+    };
+    void loadRoleAppearance();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRolePackId]);
+
+  useEffect(() => {
     if (!busy || !jobId) return;
+    // SSE 活跃时不轮询，仅作为 SSE 断开后的 fallback
+    if (sourceRef.current) return;
     const t = setInterval(() => {
       void fetchJob(jobId);
     }, 1800);
     return () => clearInterval(t);
   }, [busy, jobId]);
+
+  useEffect(() => {
+    if (!busy || startView !== "waiting") return;
+    const t = setInterval(() => {
+      setWaitElapsedSec((x) => x + 1);
+    }, 1000);
+    return () => clearInterval(t);
+  }, [busy, startView]);
+
+  const stageProgress = useMemo(() => {
+    const stage = job?.stage ?? "queued";
+    const map: Record<string, number> = {
+      queued: 8,
+      parsing: 35,
+      transcribing: 62,
+      summarizing: 86,
+      completed: 100,
+      failed: 100
+    };
+    const base = map[stage] ?? 8;
+    if (job?.status === "running" && waitElapsedSec > 0) {
+      const drift = Math.min(8, Math.floor(waitElapsedSec / 15));
+      return Math.min(96, base + drift);
+    }
+    return base;
+  }, [job?.stage, job?.status, waitElapsedSec]);
+
+  const waitTimedOut = busy && startView === "waiting" && waitElapsedSec >= 180;
 
   useEffect(
     () => () => {
@@ -969,6 +1388,11 @@ export default function HomePage(): React.ReactNode {
       }
     }, 56);
     return () => clearInterval(timer);
+  }, [activeNav]);
+
+  useEffect(() => {
+    if (activeNav !== "workshop") return;
+    setWorkshopView("list");
   }, [activeNav]);
 
   return (
@@ -1070,6 +1494,7 @@ export default function HomePage(): React.ReactNode {
                 onOpenSettings={openSettings}
                 roleName={settings.vn.characterName}
                 roleStylePrompt={settings.vn.stylePrompt}
+                submitError={submitError}
               />
             </section>
           ) : null}
@@ -1103,16 +1528,23 @@ export default function HomePage(): React.ReactNode {
                 <span className="spark s3" />
                 <span className="spark s4" />
               </div>
+              <div className="waiting-progress">
+                <div className="waiting-progress-bar" style={{ width: `${stageProgress}%` }} />
+              </div>
               <div className="waiting-stage">
                 <span>当前阶段：{job?.stage ?? "queued"}</span>
+                <span>进度：{stageProgress}% · 已耗时：{waitElapsedSec}s</span>
                 <span>任务ID：{job?.id ?? "-"}</span>
                 <span>{job?.status === "completed" ? "解析完成，正在进入模式选择..." : "请保持当前页面，结果将自动切换"}</span>
+                {waitTimedOut ? (
+                  <span className="error-text">处理时间超过 180s，可能已异常。可返回重试或检查适配器服务日志。</span>
+                ) : null}
               </div>
             </section>
           ) : null}
 
           {startView === "select" && job?.summaryMarkdown ? (
-            <section className="panel mode-select-page">
+            <section className="panel mode-select-page tier-card tier-card-level1">
               <div className="mode-topbar mode-topbar-left">
                 <button className="ghost-btn" onClick={() => setStartView("input")}>← 返回视频解析</button>
               </div>
@@ -1151,45 +1583,77 @@ export default function HomePage(): React.ReactNode {
           <div className="immersive-backbar">
             <button className="ghost-btn" onClick={() => setStartView("select")}>← 返回模式选择</button>
           </div>
-          <GalgamePlayer summary={job.summaryMarkdown} settings={settings} pageMode speaker={job.input.roleName || "解析助手"} />
+          <GalgamePlayer
+            summary={job.summaryMarkdown}
+            settings={settings}
+            pageMode
+            speaker={job.input.roleName || "解析助手"}
+            roleId={settings.vn.presetId || activeRolePackId || "custom"}
+            onAppearanceChange={syncAppearanceFromGalgame}
+            onNotify={(text, type) => showNotice(type === "success" ? "success" : "error", text)}
+          />
         </section>
       ) : null}
 
       {activeNav === "start" && startView === "analysis" ? (
         <section className="scene mode-page immersive-page">
+          <WorkBoard
+            job={job}
+            pageMode
+            showTimeline={false}
+            switchAlign="right"
+            topLeft={<button className="ghost-btn" onClick={() => setStartView("select")}>← 返回模式选择</button>}
+          />
+        </section>
+      ) : null}
+
+      {activeNav === "saves" && historyMode === "gal" && job?.summaryMarkdown ? (
+        <section className="scene mode-page immersive-page">
           <div className="immersive-backbar">
-            <button className="ghost-btn" onClick={() => setStartView("select")}>← 返回模式选择</button>
+            <button className="ghost-btn" onClick={() => setHistoryMode("select")}>← 返回模式选择</button>
           </div>
-          <WorkBoard job={job} pageMode />
+          <GalgamePlayer
+            summary={job.summaryMarkdown}
+            settings={settings}
+            pageMode
+            speaker={job.input.roleName || "解析助手"}
+            roleId={rolePacks.find((x) => x.characterName === (job.input.roleName || "").trim())?.id || settings.vn.presetId || activeRolePackId || "custom"}
+            onAppearanceChange={syncAppearanceFromGalgame}
+            onNotify={(text, type) => showNotice(type === "success" ? "success" : "error", text)}
+          />
         </section>
       ) : null}
 
       {activeNav === "saves" ? (
+        historyMode === "gal" ? null : (
         <div className="module-mask stage-mask" onClick={() => setActiveNav("home")}>
         <section className="module-shell history-shell" onClick={(e) => e.stopPropagation()}>
           <div className="module-head">
             <h3>历史任务</h3>
             <button className="ghost-btn mini" onClick={() => setActiveNav("home")}>关闭</button>
           </div>
-          <section className="scene history-layout">
-          <HistoryPanel
-            items={history}
-            currentId={job?.id}
-            onPick={(id) => {
-              setHistoryMode("select");
-              void fetchJob(id);
-            }}
-            onRefresh={() => void loadHistory()}
-          />
-          <div className="right-stack">
+          <section className="scene single-layout">
+          <div className="history-flow-shell">
+            {historyMode === "list" ? (
+              <HistoryPanel
+                className="tier-card tier-card-level1"
+                items={history}
+                currentId={job?.id}
+                onPick={(id) => {
+                  setHistoryMode("select");
+                  void fetchJob(id);
+                }}
+                onRefresh={() => void loadHistory()}
+              />
+            ) : null}
+
             {historyMode === "select" ? (
-              <section className="panel mode-select-page history-select-page">
-                <div className="mode-topbar">
-                  <div className="mode-mini-switch">
-                    <button className={historyMode === "select" ? "on" : ""}>模式选择</button>
-                  </div>
+              <section className="panel mode-select-page history-select-page tier-card tier-card-level1">
+                <div className="mode-topbar mode-topbar-left">
+                  <button className="ghost-btn mini" onClick={() => setHistoryMode("list")}>← 返回历史列表</button>
                 </div>
                 <h2 className="panel-title">模式选择</h2>
+                <p className="muted">已选择历史任务后，可进入对应阅读模式。</p>
                 <div className="mode-select-grid">
                   {job?.input.summaryMode === "role" ? (
                     <button className="mode-card" onClick={() => setHistoryMode("gal")} disabled={!job?.summaryMarkdown}>
@@ -1209,156 +1673,166 @@ export default function HomePage(): React.ReactNode {
                 </div>
               </section>
             ) : null}
-            {historyMode === "gal" ? (
-              <section className="mode-page history-mode-page">
-                <div className="mode-topbar">
-                  <div className="mode-mini-switch">
-                    <button onClick={() => setHistoryMode("select")}>选择</button>
-                    <button className="on">GalGame</button>
-                    <button onClick={() => setHistoryMode("analysis")}>阅读</button>
-                  </div>
-                </div>
-                {job?.summaryMarkdown ? <GalgamePlayer summary={job.summaryMarkdown} settings={settings} speaker={job.input.roleName || "解析助手"} /> : <GalgamePlayer summary="" settings={settings} />}
-              </section>
-            ) : null}
             {historyMode === "analysis" ? (
-              <section className="mode-page history-mode-page">
-                <div className="mode-topbar">
-                  <div className="mode-mini-switch">
-                    <button onClick={() => setHistoryMode("select")}>选择</button>
-                    {job?.input.summaryMode === "role" ? (
-                      <button onClick={() => setHistoryMode("gal")}>GalGame</button>
-                    ) : null}
-                    <button className="on">阅读</button>
-                  </div>
-                </div>
-                <WorkBoard job={job} compact />
+              <section className="panel mode-page history-mode-page tier-card tier-card-level2">
+                <WorkBoard
+                  job={job}
+                  compact
+                  showTimeline={false}
+                  switchAlign="right"
+                  topLeft={<button className="ghost-btn mini" onClick={() => setHistoryMode("select")}>← 返回模式选择</button>}
+                />
               </section>
             ) : null}
           </div>
           </section>
         </section>
         </div>
+        )
       ) : null}
 
       {activeNav === "workshop" ? (
         <section className="scene single-layout">
           <section className="panel workshop-grid hover-float">
             <h2 className="panel-title">角色工坊</h2>
-            <p className="muted">统一管理角色包：人设、语气、立绘差分、背景与推荐音色。</p>
-            <div className="role-editor-layout">
-              <div className="role-editor-list">
-                {rolePacks.map((pack) => (
-                  <button
-                    key={pack.id}
-                    className={`template-card ${activeRolePackId === pack.id ? "active" : ""}`}
-                    onClick={() => setActiveRolePackId(pack.id)}
-                  >
-                    <h3>{pack.name}</h3>
-                    <p>{pack.characterName}</p>
-                  </button>
-                ))}
-              </div>
-              {activeRolePack ? (
-                <section className="role-editor-panel">
-                  <div className="split">
-                    <label className="field">
-                      <span>角色包名</span>
-                      <input value={activeRolePack.name} onChange={(e) => updateRolePack({ name: e.target.value })} />
-                    </label>
-                    <label className="field">
-                      <span>角色名</span>
-                      <input value={activeRolePack.characterName} onChange={(e) => updateRolePack({ characterName: e.target.value })} />
-                    </label>
-                  </div>
+            <p className="muted">一级先选角色卡，二级再配置立绘差分、背景图与背景音乐。</p>
+            {workshopView === "list" ? (
+              <section className="role-card-grid">
+                {rolePacks.map((pack) => {
+                  const thumb = pack.thumbnail || "";
+                  return (
+                    <button
+                      key={pack.id}
+                      className={`template-card role-card-item ${activeRolePackId === pack.id ? "active" : ""}`}
+                      onClick={() => {
+                        setActiveRolePackId(pack.id);
+                        setWorkshopView("detail");
+                      }}
+                    >
+                      <div className="role-card-thumb">
+                        {thumb ? <img src={thumb} alt={`${pack.name} 缩略图`} /> : <span>{pack.characterName.slice(0, 1) || "角"}</span>}
+                      </div>
+                      <h3>{pack.name}</h3>
+                      <p>{pack.characterName}</p>
+                    </button>
+                  );
+                })}
+              </section>
+            ) : null}
+            {workshopView === "detail" && activeRolePack ? (
+              <section className="role-editor-panel role-editor-panel-tier2">
+                <div className="mode-topbar mode-topbar-left">
+                  <button className="ghost-btn mini" onClick={() => setWorkshopView("list")}>← 返回角色列表</button>
+                </div>
+                <div className="split">
                   <label className="field">
-                    <span>角色风格提示词</span>
-                    <textarea rows={3} value={activeRolePack.stylePrompt} onChange={(e) => updateRolePack({ stylePrompt: e.target.value })} />
+                    <span>角色包名</span>
+                    <input value={activeRolePack.name} onChange={(e) => updateRolePack({ name: e.target.value })} />
                   </label>
+                  <label className="field">
+                    <span>角色名</span>
+                    <input value={activeRolePack.characterName} onChange={(e) => updateRolePack({ characterName: e.target.value })} />
+                  </label>
+                </div>
+                <label className="field">
+                  <span>角色风格提示词</span>
+                  <textarea rows={3} value={activeRolePack.stylePrompt} onChange={(e) => updateRolePack({ stylePrompt: e.target.value })} />
+                </label>
+                <div className="split">
+                  <label className="field">
+                    <span>推荐音色</span>
+                    <FancySelect
+                      value={activeRolePack.recommendedVoice}
+                      onChange={(v) => updateRolePack({ recommendedVoice: v })}
+                      options={OFFICIAL_TTS_VOICES}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>背景主题</span>
+                    <FancySelect
+                      value={activeRolePack.backgroundTheme}
+                      onChange={(v) => updateRolePack({ backgroundTheme: v })}
+                      options={[
+                        { value: "sunset", label: "日落粉蓝" },
+                        { value: "default", label: "柔光白粉" }
+                      ]}
+                    />
+                  </label>
+                </div>
+                <div className="settings-card">
+                  <h3 className="minor-title">背景区（图 + BGM）</h3>
                   <div className="split">
-                    <label className="field">
-                      <span>推荐音色</span>
-                      <FancySelect
-                        value={activeRolePack.recommendedVoice}
-                        onChange={(v) => updateRolePack({ recommendedVoice: v })}
-                        options={OFFICIAL_TTS_VOICES}
-                      />
-                    </label>
-                    <label className="field">
-                      <span>背景主题</span>
-                      <FancySelect
-                        value={activeRolePack.backgroundTheme}
-                        onChange={(v) => updateRolePack({ backgroundTheme: v })}
-                        options={[
-                          { value: "sunset", label: "日落粉蓝" },
-                          { value: "default", label: "柔光白粉" }
-                        ]}
-                      />
-                    </label>
+                    <UploadPreviewField
+                      label="角色卡缩略图"
+                      value={activeRolePack.thumbnail}
+                      onPick={async (f) => {
+                        await setRolePackThumbnail(f);
+                      }}
+                      onClear={() => void setRolePackThumbnail(null)}
+                    />
+                    <UploadPreviewField
+                      label="自定义背景图"
+                      value={sharedAppearance.backgroundImage}
+                      onPick={async (f) => {
+                        await setSharedBackground(f);
+                      }}
+                      onClear={() => void setSharedBackground(null)}
+                    />
+                  </div>
+                  <div className="field">
+                    <span className="field-title-row">
+                      <span>背景音乐</span>
+                      <small className={`upload-state ${sharedAppearance.backgroundMusic ? "ok" : ""}`}>{sharedAppearance.backgroundMusic ? "已配置" : "未配置"}</small>
+                    </span>
+                    {sharedAppearance.backgroundMusic ? (
+                      <div className="audio-upload-wrap">
+                        <audio className="audio-preview" controls src={sharedAppearance.backgroundMusic} />
+                        <button type="button" className="preview-clear-btn" onClick={() => void setSharedBackgroundMusic(null)}>×</button>
+                      </div>
+                    ) : (
+                      <label className="upload-shell" htmlFor="role-workshop-bgm-upload">
+                        <strong>选择音频</strong>
+                        <small>点击上传背景音乐</small>
+                      </label>
+                    )}
+                    <input
+                      id="role-workshop-bgm-upload"
+                      className="upload-native"
+                      type="file"
+                      accept="audio/*"
+                      onChange={async (e) => {
+                        const inputEl = e.currentTarget;
+                        const f = e.target.files?.[0];
+                        if (!f) return;
+                        await setSharedBackgroundMusic(f);
+                        if (inputEl) inputEl.value = "";
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="settings-card">
+                  <h3 className="minor-title">立绘区（含差分）</h3>
+                  <div className="split">
+                    <UploadPreviewField label="立绘 neutral" value={sharedAppearance.sprites?.neutral} onPick={async (f) => await setSharedSprite("neutral", f)} onClear={() => void setSharedSprite("neutral", null)} />
+                    <UploadPreviewField label="立绘 happy" value={sharedAppearance.sprites?.happy} onPick={async (f) => await setSharedSprite("happy", f)} onClear={() => void setSharedSprite("happy", null)} />
                   </div>
                   <div className="split">
-                    <label className="field">
-                      <span>立绘 neutral</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={async (e) => {
-                          const f = e.target.files?.[0];
-                          if (!f) return;
-                          updateRolePackSprite("neutral", await toDataUrl(f));
-                        }}
-                      />
-                    </label>
-                    <label className="field">
-                      <span>立绘 happy</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={async (e) => {
-                          const f = e.target.files?.[0];
-                          if (!f) return;
-                          updateRolePackSprite("happy", await toDataUrl(f));
-                        }}
-                      />
-                    </label>
+                    <UploadPreviewField label="立绘 serious" value={sharedAppearance.sprites?.serious} onPick={async (f) => await setSharedSprite("serious", f)} onClear={() => void setSharedSprite("serious", null)} />
+                    <UploadPreviewField label="立绘 sad" value={sharedAppearance.sprites?.sad} onPick={async (f) => await setSharedSprite("sad", f)} onClear={() => void setSharedSprite("sad", null)} />
                   </div>
-                  <div className="split">
-                    <label className="field">
-                      <span>立绘 serious</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={async (e) => {
-                          const f = e.target.files?.[0];
-                          if (!f) return;
-                          updateRolePackSprite("serious", await toDataUrl(f));
-                        }}
-                      />
-                    </label>
-                    <label className="field">
-                      <span>自定义背景图</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={async (e) => {
-                          const f = e.target.files?.[0];
-                          if (!f) return;
-                          updateRolePack({ backgroundImage: await toDataUrl(f) });
-                        }}
-                      />
-                    </label>
-                  </div>
-                  <div className="settings-actions">
-                    <button className="solid-btn" onClick={() => applyRolePack(activeRolePack)}>应用此角色包到工作台</button>
-                    <button className="ghost-btn" onClick={openSettings}>打开统一配置面板</button>
-                  </div>
-                </section>
-              ) : null}
-            </div>
+                  <UploadPreviewField label="立绘 angry" value={sharedAppearance.sprites?.angry} onPick={async (f) => await setSharedSprite("angry", f)} onClear={() => void setSharedSprite("angry", null)} />
+                </div>
+                <div className="settings-actions">
+                  <button className="solid-btn role-save-btn" onClick={persistRolePack}>保存角色包</button>
+                  <button className="solid-btn apply-role-btn" onClick={() => applyRolePack(activeRolePack)}>应用此角色包到工作台</button>
+                  <button className="ghost-btn" onClick={openSettings}>打开统一配置面板</button>
+                </div>
+              </section>
+            ) : null}
             <div className="role-workshop-grid">
               <article className="role-pack-card">
                 <h3>角色包结构</h3>
-                <p>角色名 + 风格词 + neutral/happy/serious 立绘 + 背景主题 + 推荐音色。</p>
+                <p>角色名 + 风格词 + neutral/happy/serious/sad/angry 立绘差分 + 背景图 + 背景音乐。</p>
               </article>
               <article className="role-pack-card">
                 <h3>历史隔离策略</h3>
@@ -1390,6 +1864,11 @@ export default function HomePage(): React.ReactNode {
         ttsResult={ttsResult}
         voices={voices}
       />
+      {notice ? (
+        <div className={`top-toast ${notice.type === "error" ? "error" : "success"}`}>
+          {notice.text}
+        </div>
+      ) : null}
     </main>
   );
 }
