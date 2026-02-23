@@ -6,7 +6,7 @@ function sseEvent(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
-export async function GET(_: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {
+export async function GET(req: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {
   const { id } = await context.params;
   const job = await getJob(id);
   if (!job) {
@@ -21,18 +21,33 @@ export async function GET(_: Request, context: { params: Promise<{ id: string }>
       const encoder = new TextEncoder();
       let lastStage = job.stage;
       controller.enqueue(encoder.encode(sseEvent("stage", { stage: lastStage })));
+
       const timer = setInterval(async () => {
+        if (req.signal.aborted) {
+          clearInterval(timer);
+          return;
+        }
         const latest = await getJob(id);
         if (!latest) return;
         if (latest.stage !== lastStage) {
           lastStage = latest.stage;
-          controller.enqueue(encoder.encode(sseEvent("stage", { stage: lastStage })));
+          try {
+            controller.enqueue(encoder.encode(sseEvent("stage", { stage: lastStage })));
+          } catch {
+            clearInterval(timer);
+            return;
+          }
         }
         if (latest.stage === "completed" || latest.stage === "failed") {
           clearInterval(timer);
-          controller.close();
+          try { controller.close(); } catch { /* already closed */ }
         }
       }, 1000);
+
+      req.signal.addEventListener("abort", () => {
+        clearInterval(timer);
+        try { controller.close(); } catch { /* already closed */ }
+      });
     }
   });
 

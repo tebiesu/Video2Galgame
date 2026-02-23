@@ -7,9 +7,10 @@ interface Props {
   currentId?: string;
   onPick: (id: string) => void;
   onRefresh?: () => void;
+  className?: string;
 }
 
-export function HistoryPanel({ items, currentId, onPick, onRefresh }: Props): React.ReactNode {
+export function HistoryPanel({ items, currentId, onPick, onRefresh, className = "" }: Props): React.ReactNode {
   function pickTitle(job: JobRecord): string {
     if (job.title?.trim()) return job.title.trim();
     const fromMarkdown = (job.summaryMarkdown || "")
@@ -28,7 +29,7 @@ export function HistoryPanel({ items, currentId, onPick, onRefresh }: Props): Re
   }
 
   return (
-    <aside className="panel history-panel">
+    <aside className={`panel history-panel ${className}`.trim()}>
       <div className="history-head">
         <h3 className="panel-subtitle">历史任务</h3>
         {onRefresh ? <button className="ghost-btn mini" onClick={onRefresh}>刷新</button> : null}

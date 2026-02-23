@@ -1,22 +1,14 @@
 "use client";
 
 import type { JobRecord } from "@/lib/types";
+import { markdownSchema } from "@/lib/markdownSchema";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
-import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
+import rehypeSanitize from "rehype-sanitize";
 
 interface Props {
   job: JobRecord | null;
 }
-
-const schema = {
-  ...defaultSchema,
-  tagNames: [...(defaultSchema.tagNames || []), "img"],
-  attributes: {
-    ...(defaultSchema.attributes || {}),
-    img: ["src", "alt", "title", "width", "height"]
-  }
-};
 
 export function MarkdownResult({ job }: Props): React.ReactNode {
   return (
@@ -25,7 +17,7 @@ export function MarkdownResult({ job }: Props): React.ReactNode {
       {!job && <p className="muted">提交任务后会在这里展示 Markdown 结果。</p>}
       {job?.summaryMarkdown ? (
         <article className="markdown-body">
-          <ReactMarkdown rehypePlugins={[rehypeRaw, [rehypeSanitize, schema]]}>
+          <ReactMarkdown rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}>
             {job.summaryMarkdown}
           </ReactMarkdown>
         </article>
@@ -40,3 +32,4 @@ export function MarkdownResult({ job }: Props): React.ReactNode {
     </section>
   );
 }
+

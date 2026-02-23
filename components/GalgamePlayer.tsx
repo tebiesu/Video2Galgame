@@ -1,6 +1,8 @@
 ﻿"use client";
 
 import { FancySelect } from "@/components/FancySelect";
+import { isQuotaExceeded, toDataUrl, toOptimizedImageDataUrl } from "@/lib/clientUtils";
+import { readMedia, replaceMedia } from "@/lib/mediaStore";
 import type { AppSettings } from "@/lib/settings";
 import { splitToSpeechChunks, summaryToVnLines } from "@/lib/galgame";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -16,6 +18,17 @@ interface Props {
   settings: AppSettings;
   pageMode?: boolean;
   speaker?: string;
+  roleId?: string;
+  onAppearanceChange?: (next: {
+    sprites: SpriteMap;
+    backgroundImage: string;
+    backgroundImageRef?: string;
+    backgroundMusic?: string;
+    backgroundMusicRef?: string;
+    backgroundMusicName?: string;
+    roleId?: string;
+  }) => void;
+  onNotify?: (text: string, type?: "success" | "error") => void;
 }
 
 type SpriteMap = {
@@ -24,14 +37,16 @@ type SpriteMap = {
   serious?: string;
 };
 
-function toDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
+type RuntimeStore = {
+  customBgRef?: string;
+  customBgName?: string;
+  uploadedBgmRef?: string;
+  uploadedBgmName?: string;
+  bgmPreset?: string;
+  autoPlay?: boolean;
+};
+
+const GAL_RUNTIME_STORAGE_KEY = "videofetch.gal.runtime.shared.v1";
 
 function UploadField({
   label,
@@ -63,19 +78,20 @@ function UploadField({
   );
 }
 
-export function GalgamePlayer({ summary, settings, pageMode = false, speaker }: Props): React.ReactNode {
+export function GalgamePlayer({ summary, settings, pageMode = false, speaker, roleId, onAppearanceChange, onNotify }: Props): React.ReactNode {
   const speakerName = (speaker || settings.vn.characterName || "解析助手").trim();
   const lines = useMemo(() => summaryToVnLines(summary, speakerName), [summary, speakerName]);
   const [lineIndex, setLineIndex] = useState(0);
   const [typed, setTyped] = useState("");
   const [sprites, setSprites] = useState<SpriteMap>({});
-  const [spriteNames, setSpriteNames] = useState<Record<string, string>>({});
   const [manualExpression, setManualExpression] = useState<"auto" | "neutral" | "happy" | "serious">("auto");
   const [bgmPreset, setBgmPreset] = useState("none");
   const [uploadedBgm, setUploadedBgm] = useState("");
   const [uploadedBgmName, setUploadedBgmName] = useState("");
+  const [uploadedBgmRef, setUploadedBgmRef] = useState("");
   const [customBg, setCustomBg] = useState("");
   const [customBgName, setCustomBgName] = useState("");
+  const [customBgRef, setCustomBgRef] = useState("");
   const [playVoice, setPlayVoice] = useState(settings.vn.autoPlay);
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
@@ -86,6 +102,52 @@ export function GalgamePlayer({ summary, settings, pageMode = false, speaker }: 
   const current = lines[Math.min(lineIndex, Math.max(0, lines.length - 1))];
   const expression = manualExpression === "auto" ? current.expression : manualExpression;
   const currentSprite = sprites[expression];
+
+  useEffect(() => {
+    const roleSprites = settings.vn.sprites || {};
+    const roleBackground = settings.vn.backgroundImage || "";
+    const roleBgm = settings.vn.backgroundMusic || "";
+    const roleBgmName = settings.vn.backgroundMusicName || "";
+    const init = async (): Promise<void> => {
+      try {
+      const raw = localStorage.getItem(GAL_RUNTIME_STORAGE_KEY);
+      if (!raw) {
+        setSprites({ ...roleSprites });
+        setCustomBg(roleBackground);
+        setCustomBgName(roleBackground ? "角色包背景" : "");
+        setUploadedBgm(roleBgm);
+        setUploadedBgmName(roleBgmName);
+        return;
+      }
+      const parsed = JSON.parse(raw) as RuntimeStore;
+
+      const mergedSprites: SpriteMap = { ...roleSprites };
+      setSprites(mergedSprites);
+
+      const runtimeBg = await readMedia(parsed.customBgRef || "");
+      const runtimeBgm = await readMedia(parsed.uploadedBgmRef || "");
+      const finalBg = runtimeBg || roleBackground || "";
+      setCustomBg(finalBg);
+      setCustomBgName(parsed.customBgName || (roleBackground ? "角色包背景" : ""));
+      setCustomBgRef(parsed.customBgRef || "");
+      setUploadedBgm(runtimeBgm || roleBgm || "");
+      setUploadedBgmName(parsed.uploadedBgmName || roleBgmName || "");
+      setUploadedBgmRef(parsed.uploadedBgmRef || "");
+
+      if (parsed.bgmPreset) setBgmPreset(parsed.bgmPreset);
+      if (typeof parsed.autoPlay === "boolean") setPlayVoice(parsed.autoPlay);
+      } catch {
+      setSprites({ ...roleSprites });
+      setCustomBg(roleBackground);
+      setCustomBgName(roleBackground ? "角色包背景" : "");
+      setUploadedBgm(roleBgm);
+      setUploadedBgmName(roleBgmName);
+      setUploadedBgmRef("");
+      setCustomBgRef("");
+    }
+    };
+    void init();
+  }, [settings.vn.backgroundImage, settings.vn.sprites, settings.vn.backgroundMusic, settings.vn.backgroundMusicName]);
 
   useEffect(() => {
     setTyped("");
@@ -119,12 +181,24 @@ export function GalgamePlayer({ summary, settings, pageMode = false, speaker }: 
     void el.play().catch(() => undefined);
   }, [bgmPreset, uploadedBgm]);
 
-  async function uploadSprite(kind: keyof SpriteMap, file: File | null): Promise<void> {
-    if (!file) return;
-    const data = await toDataUrl(file);
-    setSprites((prev) => ({ ...prev, [kind]: data }));
-    setSpriteNames((prev) => ({ ...prev, [kind]: file.name }));
-  }
+  useEffect(() => {
+    try {
+      const payload: RuntimeStore = {
+        customBgRef,
+        customBgName,
+        uploadedBgmRef,
+        uploadedBgmName,
+        bgmPreset,
+        autoPlay: playVoice
+      };
+      localStorage.setItem(GAL_RUNTIME_STORAGE_KEY, JSON.stringify(payload));
+    } catch (err) {
+      if (isQuotaExceeded(err)) {
+        if (onNotify) onNotify("GalGame 资源保存失败：本地空间不足，请上传更小图片。", "error");
+        else window.alert("GalGame 资源保存失败：本地空间不足，请上传更小的背景图或立绘。");
+      }
+    }
+  }, [sprites, customBg, customBgRef, customBgName, uploadedBgmRef, uploadedBgmName, bgmPreset, playVoice]);
 
   function stopCurrentVoice(): void {
     voiceTokenRef.current += 1;
@@ -215,7 +289,7 @@ export function GalgamePlayer({ summary, settings, pageMode = false, speaker }: 
               className="gal-character gal-character-enter"
             />
           ) : (
-            <div className="gal-character placeholder">上传角色立绘</div>
+            <div className="gal-character placeholder">角色工坊未配置立绘</div>
           )}
         </div>
 
@@ -285,12 +359,6 @@ export function GalgamePlayer({ summary, settings, pageMode = false, speaker }: 
         </label>
 
         <div className="split">
-          <UploadField label="立绘 neutral" accept="image/*" fileName={spriteNames.neutral} onFile={(f) => void uploadSprite("neutral", f)} />
-          <UploadField label="立绘 happy" accept="image/*" fileName={spriteNames.happy} onFile={(f) => void uploadSprite("happy", f)} />
-        </div>
-        <UploadField label="立绘 serious" accept="image/*" fileName={spriteNames.serious} onFile={(f) => void uploadSprite("serious", f)} />
-
-        <div className="split">
           <label className="field">
             <span>背景音乐预设</span>
             <FancySelect
@@ -303,13 +371,32 @@ export function GalgamePlayer({ summary, settings, pageMode = false, speaker }: 
             label="上传背景音乐"
             accept="audio/*"
             fileName={uploadedBgmName}
-            onFile={(f) => {
+            onFile={async (f) => {
               if (!f) return;
-              setUploadedBgm(URL.createObjectURL(f));
+              const data = await toDataUrl(f);
+              const ref = await replaceMedia(uploadedBgmRef, data, "audio", f.name);
+              setUploadedBgm(data);
               setUploadedBgmName(f.name);
+              setUploadedBgmRef(ref);
+              onAppearanceChange?.({ sprites, backgroundImage: customBg, backgroundImageRef: customBgRef, backgroundMusic: data, backgroundMusicRef: ref, backgroundMusicName: f.name, roleId });
             }}
           />
         </div>
+
+        <UploadField
+          label="自定义背景图"
+          accept="image/*"
+          fileName={customBgName}
+          onFile={async (f) => {
+            if (!f) return;
+            const data = await toOptimizedImageDataUrl(f, 1440, 0.8);
+            const ref = await replaceMedia(customBgRef, data, "image", f.name);
+            setCustomBg(data);
+            setCustomBgName(f.name);
+            setCustomBgRef(ref);
+            onAppearanceChange?.({ sprites, backgroundImage: data, backgroundImageRef: ref, backgroundMusic: uploadedBgm, backgroundMusicRef: uploadedBgmRef, backgroundMusicName: uploadedBgmName, roleId });
+          }}
+        />
       </section>
       ) : null}
 
@@ -317,18 +404,12 @@ export function GalgamePlayer({ summary, settings, pageMode = false, speaker }: 
         <aside className="gal-config-float">
           <h4>沉浸配置</h4>
           <details open>
-            <summary>角色与表情</summary>
+            <summary>背景与音乐</summary>
             <div className="seg-row">
               {(["auto", "neutral", "happy", "serious"] as const).map((x) => (
                 <button key={x} type="button" className={`seg-btn ${manualExpression === x ? "on" : ""}`} onClick={() => setManualExpression(x)}>{x}</button>
               ))}
             </div>
-            <UploadField label="立绘 neutral" accept="image/*" fileName={spriteNames.neutral} onFile={(f) => void uploadSprite("neutral", f)} />
-            <UploadField label="立绘 happy" accept="image/*" fileName={spriteNames.happy} onFile={(f) => void uploadSprite("happy", f)} />
-            <UploadField label="立绘 serious" accept="image/*" fileName={spriteNames.serious} onFile={(f) => void uploadSprite("serious", f)} />
-          </details>
-          <details>
-            <summary>背景与音乐</summary>
             <label className="field">
               <span>背景音乐预设</span>
               <FancySelect value={bgmPreset} onChange={setBgmPreset} options={bgmPresets.map((x) => ({ value: x.id, label: x.name }))} />
@@ -337,10 +418,14 @@ export function GalgamePlayer({ summary, settings, pageMode = false, speaker }: 
               label="上传背景音乐"
               accept="audio/*"
               fileName={uploadedBgmName}
-              onFile={(f) => {
+              onFile={async (f) => {
                 if (!f) return;
-                setUploadedBgm(URL.createObjectURL(f));
+                const data = await toDataUrl(f);
+                const ref = await replaceMedia(uploadedBgmRef, data, "audio", f.name);
+                setUploadedBgm(data);
                 setUploadedBgmName(f.name);
+                setUploadedBgmRef(ref);
+                onAppearanceChange?.({ sprites, backgroundImage: customBg, backgroundImageRef: customBgRef, backgroundMusic: data, backgroundMusicRef: ref, backgroundMusicName: f.name, roleId });
               }}
             />
             <UploadField
@@ -349,9 +434,12 @@ export function GalgamePlayer({ summary, settings, pageMode = false, speaker }: 
               fileName={customBgName}
               onFile={async (f) => {
                 if (!f) return;
-                const data = await toDataUrl(f);
+                const data = await toOptimizedImageDataUrl(f, 1440, 0.8);
+                const ref = await replaceMedia(customBgRef, data, "image", f.name);
                 setCustomBg(data);
                 setCustomBgName(f.name);
+                setCustomBgRef(ref);
+                onAppearanceChange?.({ sprites, backgroundImage: data, backgroundImageRef: ref, backgroundMusic: uploadedBgm, backgroundMusicRef: uploadedBgmRef, backgroundMusicName: uploadedBgmName, roleId });
               }}
             />
           </details>
@@ -362,3 +450,4 @@ export function GalgamePlayer({ summary, settings, pageMode = false, speaker }: 
     </section>
   );
 }
+

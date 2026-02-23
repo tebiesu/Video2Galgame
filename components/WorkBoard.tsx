@@ -1,10 +1,11 @@
 ﻿"use client";
 
 import type { JobRecord, JobStage } from "@/lib/types";
+import { markdownSchema } from "@/lib/markdownSchema";
 import { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
-import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
+import rehypeSanitize from "rehype-sanitize";
 
 const stages: Array<{ key: JobStage; title: string; desc: string }> = [
   { key: "queued", title: "入队", desc: "等待调度" },
@@ -14,19 +15,13 @@ const stages: Array<{ key: JobStage; title: string; desc: string }> = [
   { key: "completed", title: "完成", desc: "结果可用" }
 ];
 
-const schema = {
-  ...defaultSchema,
-  tagNames: [...(defaultSchema.tagNames || []), "img"],
-  attributes: {
-    ...(defaultSchema.attributes || {}),
-    img: ["src", "alt", "title", "width", "height"]
-  }
-};
-
 interface Props {
   job: JobRecord | null;
   pageMode?: boolean;
   compact?: boolean;
+  showTimeline?: boolean;
+  switchAlign?: "left" | "right";
+  topLeft?: React.ReactNode;
 }
 
 type Pane = "raw" | "summary" | "snapshots";
@@ -42,9 +37,23 @@ function sanitizeSummaryMarkdown(md: string): string {
     });
 }
 
-export function WorkBoard({ job, pageMode = false, compact = false }: Props): React.ReactNode {
+export function WorkBoard({
+  job,
+  pageMode = false,
+  compact = false,
+  showTimeline = true,
+  switchAlign = "left",
+  topLeft
+}: Props): React.ReactNode {
   const [pane, setPane] = useState<Pane>("summary");
   const summaryMarkdown = useMemo(() => sanitizeSummaryMarkdown(job?.summaryMarkdown || ""), [job?.summaryMarkdown]);
+  const summaryTextOnly = useMemo(
+    () =>
+      summaryMarkdown
+        .replace(/!\[[^\]]*]\([^)]+\)/g, "")
+        .replace(/<img[\s\S]*?>/gi, ""),
+    [summaryMarkdown]
+  );
 
   const activeIndex = useMemo(() => {
     if (!job) return 0;
@@ -60,8 +69,10 @@ export function WorkBoard({ job, pageMode = false, compact = false }: Props): Re
   }, [job]);
 
   return (
-    <section className={pageMode ? "workboard workboard-page" : "panel workboard"}>
-      {!compact ? (
+    <section
+      className={`${pageMode ? "workboard workboard-page" : `panel workboard ${compact ? "compact" : ""}`} ${showTimeline ? "" : "no-timeline"}`.trim()}
+    >
+      {showTimeline && !compact ? (
         <div className="timeline">
           {stages.map((item, i) => {
             const done = i <= activeIndex;
@@ -81,31 +92,30 @@ export function WorkBoard({ job, pageMode = false, compact = false }: Props): Re
         </div>
       ) : null}
 
-      <div className={compact ? "workboard-headbar" : ""}>
-        {compact ? <h4 className="workboard-head-title">阅读面板</h4> : null}
-        <div className="pane-switch">
-          <button className={pane === "raw" ? "on" : ""} onClick={() => setPane("raw")}>原文</button>
-          <button className={pane === "summary" ? "on" : ""} onClick={() => setPane("summary")}>摘要</button>
-          <button className={pane === "snapshots" ? "on" : ""} onClick={() => setPane("snapshots")}>快照</button>
+      <div className={`workboard-headbar ${switchAlign === "right" ? "switch-right" : ""}`}>
+        <div className="workboard-head-left">{topLeft}</div>
+        {compact && switchAlign !== "right" ? <h4 className="workboard-head-title">阅读面板</h4> : null}
+        <div className="workboard-head-right">
+          <div className="pane-switch">
+            <button className={pane === "raw" ? "on" : ""} onClick={() => setPane("raw")}>原文</button>
+            <button className={pane === "summary" ? "on" : ""} onClick={() => setPane("summary")}>摘要</button>
+            <button className={pane === "snapshots" ? "on" : ""} onClick={() => setPane("snapshots")}>快照</button>
+          </div>
         </div>
       </div>
 
       <article className="lane lane-single active">
         {pane === "raw" ? (
           <>
-            <h3>原文</h3>
-            <p className="lane-hint">转写文本与解析详情</p>
             {job?.transcriptText ? <pre>{job.transcriptText}</pre> : <p className="muted">暂无原文</p>}
           </>
         ) : null}
 
         {pane === "summary" ? (
           <>
-            <h3>摘要</h3>
-            <p className="lane-hint">Markdown 输出</p>
-            {summaryMarkdown ? (
+            {summaryTextOnly ? (
               <div className="markdown-body">
-                <ReactMarkdown rehypePlugins={[rehypeRaw, [rehypeSanitize, schema]]}>{summaryMarkdown}</ReactMarkdown>
+                <ReactMarkdown rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}>{summaryTextOnly}</ReactMarkdown>
               </div>
             ) : (
               <p className="muted">暂无摘要</p>
@@ -115,8 +125,6 @@ export function WorkBoard({ job, pageMode = false, compact = false }: Props): Re
 
         {pane === "snapshots" ? (
           <>
-            <h3>快照</h3>
-            <p className="lane-hint">可点击放大查看</p>
             <div className="snap-grid">
               {job?.snapshots?.length ? (
                 job.snapshots.map((src) => <img key={src} src={src} alt="snapshot" loading="lazy" />)

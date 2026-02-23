@@ -27,6 +27,28 @@ function toRecord(row: Record<string, unknown>): JobRecord {
   };
 }
 
+function markStaleIfNeeded(row: Record<string, unknown>): void {
+  const status = String(row.status || "");
+  const stage = String(row.stage || "");
+  if (status !== "running") return;
+  if (stage === "completed" || stage === "failed") return;
+  const started = Date.parse(String(row.started_at || ""));
+  if (!Number.isFinite(started)) return;
+  const ageMs = Date.now() - started;
+  // 超过 6 分钟仍未完成，视为僵尸任务并自动失败，避免前端永久“解析中”
+  if (ageMs < 6 * 60 * 1000) return;
+  const db = getDb();
+  db.prepare(
+    `UPDATE jobs
+     SET status='failed', stage='failed', finished_at=?, error=?
+     WHERE id=?`
+  ).run(new Date().toISOString(), "任务超时：超过 6 分钟未完成，请重试。", String(row.id));
+  row.status = "failed";
+  row.stage = "failed";
+  row.finished_at = new Date().toISOString();
+  row.error = "任务超时：超过 6 分钟未完成，请重试。";
+}
+
 function saveJob(job: JobRecord): void {
   const db = getDb();
   db.prepare(
@@ -288,15 +310,15 @@ export async function createJob(input: JobInput): Promise<JobRecord> {
     input
   };
   saveJob(rec);
-  setTimeout(() => {
-    void runJob(rec.id);
-  }, 0);
+  // 直接启动异步任务，避免某些环境下 setTimeout 回调被中断导致任务长期停留 queued
+  void runJob(rec.id);
   return rec;
 }
 
 export async function getJob(id: string): Promise<JobRecord | undefined> {
   const db = getDb();
   const row = db.prepare("SELECT * FROM jobs WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+  if (row) markStaleIfNeeded(row);
   return row ? toRecord(row) : undefined;
 }
 
@@ -305,6 +327,7 @@ export async function listJobs(limit = 40): Promise<JobRecord[]> {
   const rows = db
     .prepare("SELECT * FROM jobs ORDER BY started_at DESC LIMIT ?")
     .all(Math.max(1, Math.min(limit, 200))) as Array<Record<string, unknown>>;
+  rows.forEach((row) => markStaleIfNeeded(row));
   return rows.map(toRecord);
 }
 

@@ -18,6 +18,16 @@ export interface VnConfig {
   textSpeed: number;
   autoPlay: boolean;
   defaultBackground: string;
+  backgroundImage?: string;
+  backgroundMusic?: string;
+  backgroundMusicName?: string;
+  sprites?: {
+    neutral?: string;
+    happy?: string;
+    serious?: string;
+    sad?: string;
+    angry?: string;
+  };
 }
 
 export interface AppSettings {
@@ -60,7 +70,11 @@ export function defaultSettings(): AppSettings {
       characterName: "解析助手",
       textSpeed: 24,
       autoPlay: true,
-      defaultBackground: "sunset"
+      defaultBackground: "sunset",
+      backgroundImage: "",
+      backgroundMusic: "",
+      backgroundMusicName: "",
+      sprites: {}
     },
     ui: {
       motionLevel: 78,
