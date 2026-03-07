@@ -143,19 +143,125 @@ body::after {
   box-shadow: 0 6px 20px rgba(0, 163, 255, 0.4);
 }
 
-/* 滚动条美化 */
-::-webkit-scrollbar {
-  width: 6px;
+/* MomoTalk Layout System */
+.ba-container {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  height: 100dvh;
+  width: 100vw;
+  overflow: hidden;
+  position: relative;
 }
-::-webkit-scrollbar-track {
-  background: transparent;
+
+.ba-sidebar {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(10px);
+  border-right: 1px solid var(--ba-border);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+  z-index: 10;
 }
-::-webkit-scrollbar-thumb {
-  background: var(--ba-border);
-  border-radius: 10px;
+
+.ba-sidebar-header {
+  margin-bottom: 32px;
+  padding: 0 8px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: var(--ba-text-soft);
+
+.ba-logo-text {
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--ba-blue);
+  letter-spacing: -0.04em;
+  font-style: italic;
+}
+
+.ba-nav-item {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  border-radius: 16px;
+  color: var(--ba-text-soft);
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.4s var(--ios-ease);
+  cursor: pointer;
+  margin-bottom: 4px;
+}
+
+.ba-nav-item:hover {
+  background: rgba(0, 163, 255, 0.05);
+  color: var(--ba-blue);
+  transform: translateX(4px);
+}
+
+.ba-nav-item.active {
+  background: var(--ba-blue);
+  color: white;
+  box-shadow: 0 8px 16px rgba(0, 163, 255, 0.25);
+}
+
+.ba-main-content {
+  position: relative;
+  overflow-y: auto;
+  padding: 40px;
+  scroll-behavior: smooth;
+}
+
+/* iOS Card Style */
+.ba-card {
+  background: var(--ba-white);
+  border-radius: var(--radius-ios);
+  border: 1px solid var(--ba-border);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03);
+  padding: 24px;
+  transition: all 0.5s var(--ios-ease);
+}
+
+.ba-card:hover {
+  box-shadow: 0 12px 48px rgba(0, 163, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.ba-section-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ba-blue);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ba-section-title::before {
+  content: "";
+  width: 4px;
+  height: 14px;
+  background: var(--ba-blue);
+  border-radius: 2px;
+}
+
+/* 响应式适配 */
+@media (max-width: 1024px) {
+  .ba-container {
+    grid-template-columns: 80px 1fr;
+  }
+  .ba-nav-text {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .ba-container {
+    grid-template-columns: 1fr;
+  }
+  .ba-sidebar {
+    display: none; /* 移动端后续增加抽屉式导航 */
+  }
 }
 
 

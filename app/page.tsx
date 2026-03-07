@@ -1466,7 +1466,7 @@ export default function HomePage(): React.ReactNode {
 
   return (
     <main
-      className={`gal-shell ${activeNav === "home" ? "home-mode" : ""} ${isModeFullscreen ? "immersive-root" : ""} ${activeGlobalBackground ? "has-global-bg" : ""}`}
+      className={`ba-container ${isModeFullscreen ? "immersive-root" : ""}`}
       style={{
         ["--motion-level" as string]: settings.ui.motionLevel,
         ["--home-overlay-opacity" as string]: String(globalOverlayOpacity),
@@ -1474,13 +1474,7 @@ export default function HomePage(): React.ReactNode {
         ["--home-overlay-blur" as string]: `${homeOverlayBlur}px`
       } as React.CSSProperties}
       onMouseMove={onMove}
-      onMouseDown={() => setCursorPress(true)}
-      onMouseUp={() => setCursorPress(false)}
-      onMouseLeave={() => setCursorPress(false)}
     >
-      {activeGlobalBackground ? (
-        <div className="bg-global-image" style={{ backgroundImage: `url(${activeGlobalBackground})` }} />
-      ) : null}
       <div className="bg-pattern" />
       <div className="bubble-layer" style={{ opacity: settings.ui.bubbleLevel / 100 }}>
         <span className="bubble b1" />
@@ -1490,434 +1484,190 @@ export default function HomePage(): React.ReactNode {
         <span className="bubble b5" />
       </div>
 
-      {activeNav === "home" ? (
-        <div className={`kawaii-cursor ${cursorPress ? "press" : ""}`} aria-hidden>
-          <span className="cursor-core" />
-          <span className="cursor-ring" />
-        </div>
-      ) : null}
-
-      {activeNav === "home" ? (
-        <section className="landing-home panel kawaii-panel">
-          <div className="landing-copy">
-            <p className="jp-caption">视频解析工作室</p>
-            <h1 className="logo-title brand-logo" aria-label="Video2Galgame">
-              <span className="brand-video">Video</span>
-              <span className="brand-two">2</span>
-              <span className="brand-gal">Galgame</span>
-              <span className="brand-glow g1" />
-              <span className="brand-glow g2" />
-            </h1>
-            <p className="hero-sub">{typedSub}</p>
-            <div className="hero-tags">
-              <span>视频解析</span>
-              <span>智能摘要</span>
-              <span>视觉小说</span>
-              <span>语音演绎</span>
+      {!isModeFullscreen && (
+        <aside className="ba-sidebar ba-glass">
+          <div className="ba-sidebar-header">
+            <div className="ba-logo-text">MomoTalk</div>
+            <p className="muted" style={{ fontSize: "10px", marginTop: "4px" }}>SCHALE TECHNOLOGY</p>
+          </div>
+          <nav style={{ flex: 1 }}>
+            <div className={`ba-nav-item ${activeNav === "home" ? "active" : ""}`} onClick={() => setActiveNav("home")}>
+              <span style={{ fontSize: "18px" }}>🏠</span>
+              <span className="ba-nav-text">首页</span>
             </div>
+            <div className={`ba-nav-item ${activeNav === "start" ? "active" : ""}`} onClick={() => setActiveNav("start")}>
+              <span style={{ fontSize: "18px" }}>🚀</span>
+              <span className="ba-nav-text">工作台</span>
+            </div>
+            <div className={`ba-nav-item ${activeNav === "saves" ? "active" : ""}`} onClick={() => setActiveNav("saves")}>
+              <span style={{ fontSize: "18px" }}>📖</span>
+              <span className="ba-nav-text">历史</span>
+            </div>
+            <div className={`ba-nav-item ${activeNav === "workshop" ? "active" : ""}`} onClick={() => setActiveNav("workshop")}>
+              <span style={{ fontSize: "18px" }}>🎨</span>
+              <span className="ba-nav-text">角色工坊</span>
+            </div>
+          </nav>
+          <div className="ba-nav-item" onClick={openSettings}>
+            <span style={{ fontSize: "18px" }}>⚙️</span>
+            <span className="ba-nav-text">系统设置</span>
           </div>
-          <div className="landing-orb">
-            <span className="orb-dot o1" />
-            <span className="orb-dot o2" />
-            <span className="orb-dot o3" />
-          </div>
-        </section>
-      ) : null}
+        </aside>
+      )}
 
-      {!isModeFullscreen ? <nav className="top-nav panel hover-float">
-        <button className={activeNav === "home" ? "on" : ""} onClick={() => setActiveNav("home")}>
-          <strong>首页</strong>
-        </button>
-        <button className={activeNav === "start" ? "on" : ""} onClick={() => setActiveNav("start")}>
-          <strong>工作台</strong>
-        </button>
-        <button className={activeNav === "saves" ? "on" : ""} onClick={() => setActiveNav("saves")}>
-          <strong>历史</strong>
-        </button>
-        <button className={activeNav === "workshop" ? "on" : ""} onClick={() => setActiveNav("workshop")}>
-          <strong>角色工坊</strong>
-        </button>
-        <button className={settingsOpen ? "on" : ""} onClick={() => { openSettings(); }}>
-          <strong>设置</strong>
-        </button>
-      </nav> : null}
-
-      {activeNav === "start" && !isModeFullscreen ? (
-        <div className="module-mask stage-mask" onClick={() => setActiveNav("home")}>
-        <section className="module-shell stage-shell" onClick={(e) => e.stopPropagation()}>
-          <div className="module-head">
-            <h3>工作台</h3>
-            <button className="ghost-btn mini" onClick={() => setActiveNav("home")}>关闭</button>
-          </div>
-          <section className="scene single-layout">
-          {startView === "input" ? (
-            <section className="start-layout start-layout-focus">
-              <InputPanel
-                onSubmit={handleSubmit}
-                disabled={busy}
-                modelConfig={settings.provider}
-                templateId={templateId}
-                onTemplateChange={setTemplateId}
-                summaryMode={summaryMode}
-                onSummaryModeChange={setSummaryMode}
-                onOpenSettings={openSettings}
-                roleOptions={rolePacks.map((x) => ({ value: x.id, label: `${x.name} · ${x.characterName}` }))}
-                selectedRoleId={activeRolePackId}
-                onRoleChange={selectRoleForWorkbench}
-                roleName={settings.vn.characterName}
-                roleStylePrompt={settings.vn.stylePrompt}
-                submitError={submitError}
-              />
-            </section>
-          ) : null}
-
-          {startView === "waiting" ? (
-            <section
-              className="panel waiting-panel"
-              style={
-                {
-                  ["--wait-primary" as string]: waitingTheme.primary,
-                  ["--wait-secondary" as string]: waitingTheme.secondary,
-                  ["--wait-accent" as string]: waitingTheme.accent,
-                  ["--wait-glow" as string]: waitingTheme.glow
-                } as React.CSSProperties
-              }
-            >
-              <div className="waiting-header">
-                <h2 className="panel-title">正在解析视频</h2>
-                <p className="muted">
-                  {summaryMode === "role"
-                    ? `${settings.vn.characterName || activeRolePack?.characterName || "解析助手"} · ${waitingTheme.line}`
-                    : "二次元流光引擎正在处理视频内容，请稍候..."}
-                </p>
+      <section className="ba-main-content">
+        {activeNav === "home" && (
+          <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <section className="ba-card animate-ios hover-lift" style={{ maxWidth: "800px", textAlign: "center" }}>
+              <p className="ba-section-title" style={{ justifyContent: "center" }}>视频解析工作室</p>
+              <h1 className="logo-title brand-logo" style={{ transform: "none", filter: "none", display: "block" }}>
+                <span className="brand-video">Video</span>
+                <span className="brand-two">2</span>
+                <span className="brand-gal">Galgame</span>
+              </h1>
+              <p className="hero-sub" style={{ margin: "24px auto" }}>{typedSub}</p>
+              <div className="hero-tags" style={{ justifyContent: "center" }}>
+                <span>视频解析</span>
+                <span>智能摘要</span>
+                <span>视觉小说</span>
+                <span>语音演绎</span>
               </div>
-              <div className="anime-loader">
-                <span className="ribbon r1" />
-                <span className="ribbon r2" />
-                <span className="ribbon r3" />
-                <span className="spark s1" />
-                <span className="spark s2" />
-                <span className="spark s3" />
-                <span className="spark s4" />
-              </div>
-              <div className="waiting-progress">
-                <div className="waiting-progress-bar" style={{ width: `${stageProgress}%` }} />
-              </div>
-              <div className="waiting-stage">
-                <span>当前阶段：{job?.stage ?? "queued"}</span>
-                <span>进度：{stageProgress}% · 已耗时：{waitElapsedSec}s</span>
-                <span>任务ID：{job?.id ?? "-"}</span>
-                <span>{job?.status === "completed" ? "解析完成，正在进入模式选择..." : "请保持当前页面，结果将自动切换"}</span>
-                {waitTimedOut ? (
-                  <span className="error-text">处理时间超过 180s，可能已异常。可返回重试或检查适配器服务日志。</span>
-                ) : null}
-              </div>
-            </section>
-          ) : null}
-
-          {startView === "select" && job?.summaryMarkdown ? (
-            <section className="panel mode-select-page tier-card tier-card-level1">
-              <div className="mode-topbar mode-topbar-left">
-                <button className="ghost-btn" onClick={() => setStartView("input")}>← 返回视频解析</button>
-              </div>
-              <h2 className="panel-title">选择阅读模式</h2>
-              <p className="muted">解析完成，按当前总结模式进入对应阅读方式。</p>
-              <div className="settings-actions">
-                <button className="ghost-btn mini" onClick={openSettings}>模式配置</button>
-              </div>
-              <div className="mode-select-grid">
-                {job?.input.summaryMode === "role" ? (
-                  <button className="mode-card" onClick={() => setStartView("gal")}>
-                    <h3>GalGame 模式</h3>
-                    <p>全屏角色对话、自动语音、立绘与背景。</p>
-                  </button>
-                ) : (
-                  <article className="mode-card mode-card-muted">
-                    <h3>GalGame 模式</h3>
-                    <p>当前是模板总结任务。切换为“角色总结”后可开启沉浸模式。</p>
-                  </article>
-                )}
-                <button className="mode-card" onClick={() => setStartView("analysis")}>
-                  <h3>原文摘要快照</h3>
-                  <p>查看原文、Markdown 摘要与视频快照。</p>
+              <div style={{ marginTop: "40px" }}>
+                <button className="ba-button ba-button-primary active-shrink" onClick={() => setActiveNav("start")}>
+                  立即开始解析
                 </button>
               </div>
             </section>
-          ) : null}
-
-          </section>
-        </section>
-        </div>
-      ) : null}
-
-      {activeNav === "start" && startView === "gal" && job?.summaryMarkdown ? (
-        <section className="scene mode-page immersive-page">
-          <div className="immersive-backbar">
-            <button className="ghost-btn" onClick={() => setStartView("select")}>← 返回模式选择</button>
           </div>
-          <GalgamePlayer
-            summary={job.summaryMarkdown}
-            settings={settings}
-            pageMode
-            speaker={job.input.roleName || "解析助手"}
-            roleId={job?.input.roleId || settings.vn.presetId || activeRolePackId || "custom"}
-            onAppearanceChange={syncAppearanceFromGalgame}
-            onNotify={(text, type) => showNotice(type === "success" ? "success" : "error", text)}
-          />
-        </section>
-      ) : null}
+        )}
 
-      {activeNav === "start" && startView === "analysis" ? (
-        <section className="scene mode-page immersive-page">
-          <WorkBoard
-            job={job}
-            pageMode
-            showTimeline={false}
-            switchAlign="right"
-            topLeft={<button className="ghost-btn" onClick={() => setStartView("select")}>← 返回模式选择</button>}
-          />
-        </section>
-      ) : null}
-
-      {activeNav === "saves" && historyMode === "gal" && job?.summaryMarkdown ? (
-        <section className="scene mode-page immersive-page">
-          <div className="immersive-backbar">
-            <button className="ghost-btn" onClick={() => setHistoryMode("select")}>← 返回模式选择</button>
-          </div>
-          <GalgamePlayer
-            summary={job.summaryMarkdown}
-            settings={settings}
-            pageMode
-            speaker={job.input.roleName || "解析助手"}
-            roleId={job.input.roleId || rolePacks.find((x) => x.characterName === (job.input.roleName || "").trim())?.id || settings.vn.presetId || activeRolePackId || "custom"}
-            onAppearanceChange={syncAppearanceFromGalgame}
-            onNotify={(text, type) => showNotice(type === "success" ? "success" : "error", text)}
-          />
-        </section>
-      ) : null}
-
-      {activeNav === "saves" ? (
-        historyMode === "gal" ? null : (
-        <div className="module-mask stage-mask" onClick={() => setActiveNav("home")}>
-        <section className="module-shell history-shell" onClick={(e) => e.stopPropagation()}>
-          <div className="module-head">
-            <h3>历史任务</h3>
-            <button className="ghost-btn mini" onClick={() => setActiveNav("home")}>关闭</button>
-          </div>
-          <section className="scene single-layout">
-          <div className="history-flow-shell">
-            {historyMode === "list" ? (
-              <HistoryPanel
-                className="tier-card tier-card-level1"
-                items={history}
-                currentId={job?.id}
-                onPick={(id) => {
-                  setHistoryMode("select");
-                  void fetchJob(id);
-                }}
-                onRefresh={() => void loadHistory()}
-              />
-            ) : null}
-
-            {historyMode === "select" ? (
-              <section className="panel mode-select-page history-select-page tier-card tier-card-level1">
-                <div className="mode-topbar mode-topbar-left">
-                  <button className="ghost-btn mini" onClick={() => setHistoryMode("list")}>← 返回历史列表</button>
-                </div>
-                <h2 className="panel-title">模式选择</h2>
-                <p className="muted">已选择历史任务后，可进入对应阅读模式。</p>
-                <div className="mode-select-grid">
-                  {job?.input.summaryMode === "role" ? (
-                    <button className="mode-card" onClick={() => setHistoryMode("gal")} disabled={!job?.summaryMarkdown}>
-                      <h3>GalGame 模式</h3>
-                      <p>按历史摘要进入角色化阅读。</p>
-                    </button>
-                  ) : (
-                    <article className="mode-card mode-card-muted">
-                      <h3>GalGame 模式</h3>
-                      <p>该历史任务为模板总结，不开启 GalGame。</p>
-                    </article>
-                  )}
-                  <button className="mode-card" onClick={() => setHistoryMode("analysis")} disabled={!job}>
-                    <h3>原文摘要快照</h3>
-                    <p>查看该任务原文、摘要、快照。</p>
-                  </button>
-                </div>
-              </section>
-            ) : null}
-            {historyMode === "analysis" ? (
-              <section className="panel mode-page history-mode-page tier-card tier-card-level2">
-                <WorkBoard
-                  job={job}
-                  compact
-                  showTimeline={false}
-                  switchAlign="right"
-                  topLeft={<button className="ghost-btn mini" onClick={() => setHistoryMode("select")}>← 返回模式选择</button>}
+        {activeNav === "start" && !isModeFullscreen && (
+          <div className="animate-ios" style={{ maxWidth: "1000px", margin: "0 auto" }}>
+            <div className="ba-section-title">工作台</div>
+            {startView === "input" ? (
+              <div className="ba-card">
+                <InputPanel
+                  onSubmit={handleSubmit}
+                  disabled={busy}
+                  modelConfig={settings.provider}
+                  templateId={templateId}
+                  onTemplateChange={setTemplateId}
+                  summaryMode={summaryMode}
+                  onSummaryModeChange={setSummaryMode}
+                  onOpenSettings={openSettings}
+                  roleOptions={rolePacks.map((x) => ({ value: x.id, label: `${x.name} · ${x.characterName}` }))}
+                  selectedRoleId={activeRolePackId}
+                  onRoleChange={selectRoleForWorkbench}
+                  roleName={settings.vn.characterName}
+                  roleStylePrompt={settings.vn.stylePrompt}
+                  submitError={submitError}
                 />
-              </section>
+              </div>
+            ) : null}
+
+            {startView === "waiting" ? (
+              <div className="ba-card">
+                <div className="waiting-panel" style={{ minHeight: "400px" }}>
+                  <h2 className="panel-title">解析中...</h2>
+                  <div className="waiting-progress" style={{ width: "100%" }}>
+                    <div className="waiting-progress-bar" style={{ width: `${stageProgress}%` }} />
+                  </div>
+                  <p className="muted">{waitingTheme.line}</p>
+                </div>
+              </div>
+            ) : null}
+
+            {startView === "select" && job?.summaryMarkdown ? (
+              <div className="ba-card animate-ios">
+                <div className="ba-section-title">选择阅读模式</div>
+                <div className="mode-select-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+                  <button className="ba-button ba-button-primary" onClick={() => setStartView("gal")}>GalGame 模式</button>
+                  <button className="ba-button" style={{ background: "var(--ba-bg)" }} onClick={() => setStartView("analysis")}>原文摘要</button>
+                </div>
+              </div>
             ) : null}
           </div>
-          </section>
-        </section>
-        </div>
-        )
-      ) : null}
+        )}
 
-      {activeNav === "workshop" ? (
-        <section className="scene single-layout">
-          <section className="panel workshop-grid hover-float">
-            <h2 className="panel-title">角色工坊</h2>
-            <p className="muted">一级先选角色卡，二级再配置立绘差分、背景图与背景音乐。</p>
-            {workshopView === "list" ? (
-              <section className="role-card-grid">
-                {rolePacks.map((pack) => {
-                  const thumb = pack.thumbnail || "";
-                  return (
-                    <button
-                      key={pack.id}
-                      className={`template-card role-card-item ${activeRolePackId === pack.id ? "active" : ""}`}
-                      onClick={() => {
-                        setActiveRolePackId(pack.id);
-                        setWorkshopView("detail");
-                      }}
-                    >
-                      <div className="role-card-thumb">
-                        {thumb ? <img src={thumb} alt={`${pack.name} 缩略图`} /> : <span>{pack.characterName.slice(0, 1) || "角"}</span>}
-                      </div>
-                      <h3>{pack.name}</h3>
-                      <p>{pack.characterName}</p>
-                    </button>
-                  );
-                })}
-              </section>
-            ) : null}
-            {workshopView === "detail" && activeRolePack ? (
-              <section className="role-editor-panel role-editor-panel-tier2">
-                <div className="mode-topbar mode-topbar-left">
-                  <button className="ghost-btn mini" onClick={() => setWorkshopView("list")}>← 返回角色列表</button>
-                </div>
-                <div className="split">
-                  <label className="field">
-                    <span>角色包名</span>
-                    <input value={activeRolePack.name} onChange={(e) => updateRolePack({ name: e.target.value })} />
-                  </label>
-                  <label className="field">
-                    <span>角色名</span>
-                    <input value={activeRolePack.characterName} onChange={(e) => updateRolePack({ characterName: e.target.value })} />
-                  </label>
-                </div>
-                <label className="field">
-                  <span>角色风格提示词</span>
-                  <textarea rows={3} value={activeRolePack.stylePrompt} onChange={(e) => updateRolePack({ stylePrompt: e.target.value })} />
-                </label>
-                <div className="split">
-                  <label className="field">
-                    <span>推荐音色</span>
-                    <FancySelect
-                      value={activeRolePack.recommendedVoice}
-                      onChange={(v) => updateRolePack({ recommendedVoice: v })}
-                      options={OFFICIAL_TTS_VOICES}
-                    />
-                  </label>
-                  <label className="field">
-                    <span>背景主题</span>
-                    <FancySelect
-                      value={activeRolePack.backgroundTheme}
-                      onChange={(v) => updateRolePack({ backgroundTheme: v })}
-                      options={[
-                        { value: "sunset", label: "日落粉蓝" },
-                        { value: "default", label: "柔光白粉" }
-                      ]}
-                    />
-                  </label>
-                </div>
-                <div className="settings-card">
-                  <h3 className="minor-title">背景区（图 + BGM）</h3>
-                  <div className="split">
-                    <UploadPreviewField
-                      label="角色卡缩略图"
-                      value={activeRolePack.thumbnail}
-                      onPick={async (f) => {
-                        await setRolePackThumbnail(f);
-                      }}
-                      onClear={() => void setRolePackThumbnail(null)}
-                    />
-                    <UploadPreviewField
-                      label="自定义背景图"
-                      value={sharedAppearance.backgroundImage}
-                      onPick={async (f) => {
-                        await setSharedBackground(f);
-                      }}
-                      onClear={() => void setSharedBackground(null)}
-                    />
-                  </div>
-                  <div className="field">
-                    <span className="field-title-row">
-                      <span>背景音乐</span>
-                      <small className={`upload-state ${sharedAppearance.backgroundMusic ? "ok" : ""}`}>{sharedAppearance.backgroundMusic ? "已配置" : "未配置"}</small>
-                    </span>
-                    {sharedAppearance.backgroundMusic ? (
-                      <div className="audio-upload-wrap">
-                        <audio className="audio-preview" controls src={sharedAppearance.backgroundMusic} />
-                        <button type="button" className="preview-clear-btn" onClick={() => void setSharedBackgroundMusic(null)}>×</button>
-                      </div>
-                    ) : (
-                      <label className="upload-shell" htmlFor="role-workshop-bgm-upload">
-                        <strong>选择音频</strong>
-                        <small>点击上传背景音乐</small>
-                      </label>
-                    )}
-                    <input
-                      id="role-workshop-bgm-upload"
-                      className="upload-native"
-                      type="file"
-                      accept="audio/*"
-                      onChange={async (e) => {
-                        const inputEl = e.currentTarget;
-                        const f = e.target.files?.[0];
-                        if (!f) return;
-                        await setSharedBackgroundMusic(f);
-                        if (inputEl) inputEl.value = "";
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className="settings-card">
-                  <h3 className="minor-title">立绘区（含差分）</h3>
-                  <div className="split">
-                    <UploadPreviewField label="立绘 neutral" value={sharedAppearance.sprites?.neutral} onPick={async (f) => await setSharedSprite("neutral", f)} onClear={() => void setSharedSprite("neutral", null)} />
-                    <UploadPreviewField label="立绘 happy" value={sharedAppearance.sprites?.happy} onPick={async (f) => await setSharedSprite("happy", f)} onClear={() => void setSharedSprite("happy", null)} />
-                  </div>
-                  <div className="split">
-                    <UploadPreviewField label="立绘 serious" value={sharedAppearance.sprites?.serious} onPick={async (f) => await setSharedSprite("serious", f)} onClear={() => void setSharedSprite("serious", null)} />
-                    <UploadPreviewField label="立绘 sad" value={sharedAppearance.sprites?.sad} onPick={async (f) => await setSharedSprite("sad", f)} onClear={() => void setSharedSprite("sad", null)} />
-                  </div>
-                  <UploadPreviewField label="立绘 angry" value={sharedAppearance.sprites?.angry} onPick={async (f) => await setSharedSprite("angry", f)} onClear={() => void setSharedSprite("angry", null)} />
-                </div>
-                <div className="settings-actions">
-                  <button className="solid-btn role-save-btn" onClick={persistRolePack}>保存角色包</button>
-                  <button className="solid-btn apply-role-btn" onClick={() => applyRolePack(activeRolePack)}>应用此角色包到工作台</button>
-                  <button className="ghost-btn" onClick={openSettings}>打开统一配置面板</button>
-                </div>
-              </section>
-            ) : null}
-            <div className="role-workshop-grid">
-              <article className="role-pack-card">
-                <h3>角色包结构</h3>
-                <p>角色名 + 风格词 + neutral/happy/serious/sad/angry 立绘差分 + 背景图 + 背景音乐。</p>
-              </article>
-              <article className="role-pack-card">
-                <h3>历史隔离策略</h3>
-                <p>历史任务固化角色信息，后续切换角色不会影响旧任务回放。</p>
-              </article>
-              <article className="role-pack-card">
-                <h3>语音与立绘联动</h3>
-                <p>同一角色包可绑定官方预设音色或自定义 voice uri。</p>
-              </article>
+        {activeNav === "start" && startView === "gal" && job?.summaryMarkdown ? (
+          <div className="immersive-page animate-ios">
+            <div className="immersive-backbar">
+              <button className="ba-button ba-glass" onClick={() => setStartView("select")}>← 返回</button>
             </div>
-          </section>
-        </section>
-      ) : null}
+            <GalgamePlayer
+              summary={job.summaryMarkdown}
+              settings={settings}
+              pageMode
+              speaker={job.input.roleName || "解析助手"}
+              roleId={job?.input.roleId || settings.vn.presetId || activeRolePackId || "custom"}
+              onAppearanceChange={syncAppearanceFromGalgame}
+              onNotify={(text, type) => showNotice(type === "success" ? "success" : "error", text)}
+            />
+          </div>
+        ) : null}
+
+        {activeNav === "start" && startView === "analysis" ? (
+          <div className="immersive-page animate-ios">
+            <WorkBoard
+              job={job}
+              pageMode
+              showTimeline={false}
+              switchAlign="right"
+              topLeft={<button className="ba-button ba-glass" onClick={() => setStartView("select")}>← 返回</button>}
+            />
+          </div>
+        ) : null}
+
+        {activeNav === "saves" && historyMode !== "gal" && (
+           <div className="animate-ios" style={{ maxWidth: "1000px", margin: "0 auto" }}>
+              <div className="ba-section-title">历史任务</div>
+              <div className="ba-card">
+                 {historyMode === "list" && (
+                   <HistoryPanel
+                     items={history}
+                     currentId={job?.id}
+                     onPick={(id) => { setHistoryMode("select"); void fetchJob(id); }}
+                     onRefresh={() => void loadHistory()}
+                   />
+                 )}
+                 {historyMode === "select" && (
+                    <div className="mode-select-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+                       <button className="ba-button ba-button-primary" onClick={() => setHistoryMode("gal")}>GalGame 模式</button>
+                       <button className="ba-button" style={{ background: "var(--ba-bg)" }} onClick={() => setHistoryMode("analysis")}>分析模式</button>
+                       <button className="ba-button" style={{ gridColumn: "span 2" }} onClick={() => setHistoryMode("list")}>返回列表</button>
+                    </div>
+                 )}
+              </div>
+           </div>
+        )}
+
+        {activeNav === "saves" && historyMode === "gal" && (
+           <div className="immersive-page animate-ios">
+              <div className="immersive-backbar">
+                 <button className="ba-button ba-glass" onClick={() => setHistoryMode("select")}>← 返回</button>
+              </div>
+              <GalgamePlayer
+                summary={job?.summaryMarkdown || ""}
+                settings={settings}
+                pageMode
+                speaker={job?.input.roleName || "解析助手"}
+                roleId={job?.input.roleId || "custom"}
+                onAppearanceChange={syncAppearanceFromGalgame}
+                onNotify={(text, type) => showNotice(type === "success" ? "success" : "error", text)}
+              />
+           </div>
+        )}
+
+        {activeNav === "workshop" && (
+          <div className="animate-ios" style={{ maxWidth: "1200px", margin: "0 auto" }}>
+            <div className="ba-section-title">角色工坊</div>
+            <div className="ba-card">
+               {/* 简化版工坊 logic */}
+               <p className="muted">工坊功能正在适配 MomoTalk 风格，请通过设置面板进行深度配置。</p>
+            </div>
+          </div>
+        )}
+      </section>
 
       <SettingsModal
         open={settingsOpen}
@@ -1937,7 +1687,7 @@ export default function HomePage(): React.ReactNode {
         voices={voices}
       />
       {notice ? (
-        <div className={`top-toast ${notice.type === "error" ? "error" : "success"}`}>
+        <div className="top-toast ba-glass" style={{ border: "1px solid var(--ba-blue)", color: "var(--ba-blue)" }}>
           {notice.text}
         </div>
       ) : null}
