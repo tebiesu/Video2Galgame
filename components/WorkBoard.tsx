@@ -70,103 +70,138 @@ export function WorkBoard({
 
   return (
     <section
-      className={`animate-ios ${pageMode ? "workboard-page" : "ba-card"}`}
-      style={{ padding: pageMode ? "0" : "24px" }}
+      className={`animate-ba ${pageMode ? "workboard-page" : "ba-card"}`}
+      style={{ padding: pageMode ? "0" : "40px", position: "relative" }}
     >
-      <div className={`workboard-headbar ${switchAlign === "right" ? "switch-right" : ""}`} style={{ marginBottom: "20px" }}>
-        <div className="workboard-head-left">{topLeft || <h3 className="ba-section-title" style={{ margin: 0 }}>任务看板</h3>}</div>
+      {/* 背景装饰：机密水印 */}
+      <div style={{ position: "absolute", top: "40px", right: "40px", opacity: 0.05, fontSize: "60px", fontWeight: "900", pointerEvents: "none", transform: "rotate(-15deg)" }}>
+        TOP SECRET / 机密
+      </div>
+
+      <div className={`workboard-headbar ${switchAlign === "right" ? "switch-right" : ""}`} style={{ marginBottom: "32px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div className="workboard-head-left">
+          {topLeft || (
+            <div>
+              <div className="ba-section-title">INTELLIGENCE REPORT / 情报报告</div>
+              <h3 style={{ margin: 0, fontSize: "24px", fontWeight: "900" }}>任务执行分析</h3>
+            </div>
+          )}
+        </div>
         <div className="workboard-head-right">
-          <div className="ba-glass" style={{ display: "inline-flex", padding: "4px", borderRadius: "14px", gap: "4px" }}>
+          <div style={{ display: "flex", background: "var(--ba-bg-base)", padding: "6px", borderRadius: "16px", gap: "8px", border: "2px solid var(--ba-blue-light)" }}>
             <button 
               className="ba-button" 
-              style={{ height: "32px", padding: "0 16px", fontSize: "13px", borderRadius: "10px", background: pane === "raw" ? "var(--ba-blue)" : "transparent", color: pane === "raw" ? "white" : "var(--ba-text-soft)" }}
+              style={{ height: "40px", border: "none", borderRadius: "10px", background: pane === "raw" ? "var(--ba-blue)" : "transparent", color: pane === "raw" ? "white" : "var(--ba-text-soft)", boxShadow: pane === "raw" ? "" : "none" }}
               onClick={() => setPane("raw")}
             >
-              原文
+              RAW DATA
             </button>
             <button 
               className="ba-button" 
-              style={{ height: "32px", padding: "0 16px", fontSize: "13px", borderRadius: "10px", background: pane === "summary" ? "var(--ba-blue)" : "transparent", color: pane === "summary" ? "white" : "var(--ba-text-soft)" }}
+              style={{ height: "40px", border: "none", borderRadius: "10px", background: pane === "summary" ? "var(--ba-blue)" : "transparent", color: pane === "summary" ? "white" : "var(--ba-text-soft)", boxShadow: pane === "summary" ? "" : "none" }}
               onClick={() => setPane("summary")}
             >
-              摘要
+              SUMMARY
             </button>
             <button 
               className="ba-button" 
-              style={{ height: "32px", padding: "0 16px", fontSize: "13px", borderRadius: "10px", background: pane === "snapshots" ? "var(--ba-blue)" : "transparent", color: pane === "snapshots" ? "white" : "var(--ba-text-soft)" }}
+              style={{ height: "40px", border: "none", borderRadius: "10px", background: pane === "snapshots" ? "var(--ba-blue)" : "transparent", color: pane === "snapshots" ? "white" : "var(--ba-text-soft)", boxShadow: pane === "snapshots" ? "" : "none" }}
               onClick={() => setPane("snapshots")}
             >
-              快照
+              VISUALS
             </button>
           </div>
         </div>
       </div>
 
       {showTimeline && !compact && (
-        <div className="timeline ba-glass animate-ios" style={{ padding: "20px", borderRadius: "18px", marginBottom: "24px" }}>
-          {stages.map((item, i) => {
-            const done = i <= activeIndex;
-            return (
-              <div key={item.key} className={`node ${done ? "done" : ""}`}>
-                <div 
-                  className="animate-ios"
-                  style={{ 
-                    width: "12px", height: "12px", borderRadius: "50%", 
-                    background: done ? "var(--ba-blue)" : "var(--ba-border)",
-                    boxShadow: done ? "0 0 12px var(--ba-blue)" : "none"
-                  }} 
-                />
-                <div className="node-meta" style={{ marginTop: "8px" }}>
-                  <strong style={{ fontSize: "12px", color: done ? "var(--ba-blue)" : "var(--ba-text-soft)" }}>{item.title}</strong>
+        <div className="timeline animate-ba delay-1" style={{ background: "rgba(0, 163, 255, 0.03)", padding: "30px", borderRadius: "20px", marginBottom: "40px", border: "1.5px solid var(--ba-blue-light)", position: "relative" }}>
+          <div style={{ position: "absolute", top: "10px", left: "20px", fontSize: "10px", fontWeight: "900", color: "var(--ba-blue)", opacity: 0.5 }}>SEQUENCE EXECUTION PROGRESS</div>
+          <div style={{ display: "flex", justifyContent: "space-between", position: "relative", zIndex: 1 }}>
+            {stages.map((item, i) => {
+              const done = i <= activeIndex;
+              return (
+                <div key={item.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", width: "80px" }}>
+                  <div 
+                    style={{ 
+                      width: "32px", height: "32px", borderRadius: "50%", 
+                      background: done ? "var(--ba-blue)" : "white",
+                      border: "3px solid " + (done ? "var(--ba-blue-light)" : "var(--ba-border-color)"),
+                      boxShadow: done ? "0 0 15px var(--ba-blue-glow)" : "none",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      color: done ? "white" : "var(--ba-text-soft)", fontSize: "14px", fontWeight: "900"
+                    }} 
+                  >
+                    {done ? "✓" : i + 1}
+                  </div>
+                  <strong style={{ fontSize: "11px", color: done ? "var(--ba-blue)" : "var(--ba-text-soft)", textAlign: "center" }}>{item.title}</strong>
                 </div>
-              </div>
-            );
-          })}
-          <div className="timeline-bar" style={{ background: "var(--ba-border)", top: "25px" }}>
-            <div className="timeline-fill" style={{ width: `${(activeIndex / (stages.length - 1)) * 100}%`, background: "var(--ba-blue)" }} />
+              );
+            })}
+          </div>
+          {/* 背景连接线 */}
+          <div style={{ position: "absolute", top: "46px", left: "60px", right: "60px", height: "4px", background: "var(--ba-border-color)", zIndex: 0 }}>
+            <div style={{ height: "100%", width: `${(activeIndex / (stages.length - 1)) * 100}%`, background: "var(--ba-blue)", transition: "width 0.5s var(--ios-ease)" }} />
           </div>
         </div>
       )}
 
-      <article className="animate-ios" style={{ minHeight: "400px" }}>
+      <article className="animate-ba delay-2" style={{ minHeight: "500px" }}>
         {pane === "raw" ? (
-          <div className="ba-glass" style={{ padding: "20px", borderRadius: "18px", fontSize: "14px", lineHeight: "1.8", whiteSpace: "pre-wrap", color: "var(--ba-text)" }}>
-            {job?.transcriptText ? job.transcriptText : <p className="muted">暂无原文数据</p>}
+          <div className="ba-card" style={{ padding: "30px", background: "#1E293B", color: "#94A3B8", borderRadius: "16px", border: "none", fontFamily: "'Fira Code', monospace", fontSize: "13px", lineHeight: "1.6", overflowY: "auto", maxHeight: "600px" }}>
+            <div style={{ color: "#38BDF8", marginBottom: "10px", fontWeight: "bold", borderBottom: "1px solid #334155", paddingBottom: "8px" }}>// STREAM DATA FROM ADAPTER</div>
+            {job?.transcriptText ? job.transcriptText : "NO TRANSCRIPT DATA FOUND."}
           </div>
         ) : null}
 
         {pane === "summary" ? (
-          <div className="markdown-body ba-glass animate-ios" style={{ padding: "24px", borderRadius: "18px" }}>
+          <div className="markdown-body ba-card animate-ba" style={{ padding: "40px", border: "2px solid var(--ba-blue-light)" }}>
+            <div style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
+              <span style={{ background: "var(--ba-blue)", color: "white", padding: "2px 10px", borderRadius: "4px", fontSize: "10px", fontWeight: "900" }}>FINAL_VERDICT</span>
+              <span style={{ color: "var(--ba-blue)", fontWeight: "bold", fontSize: "12px" }}>SCHALE INTELLIGENCE UNIT</span>
+            </div>
             {summaryTextOnly ? (
               <ReactMarkdown rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}>
                 {summaryTextOnly}
               </ReactMarkdown>
             ) : (
-              <p className="muted">正在同步 SCHALE 总结报告...</p>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "20px", padding: "100px 0" }}>
+                <div style={{ width: "40px", height: "40px", border: "3px solid var(--ba-blue-light)", borderTopColor: "var(--ba-blue)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+                <p className="muted" style={{ fontWeight: "900" }}>SYNCHRONIZING WITH ARONA...</p>
+              </div>
             )}
           </div>
         ) : null}
 
         {pane === "snapshots" ? (
-          <div className="snap-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "16px" }}>
+          <div className="snap-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "24px" }}>
             {job?.snapshots?.length ? (
-              job.snapshots.map((src) => (
-                <img 
-                  key={src} src={src} alt="snapshot" 
-                  className="animate-ios hover-lift"
-                  style={{ width: "100%", borderRadius: "14px", border: "1px solid var(--ba-border)" }} 
-                />
+              job.snapshots.map((src, idx) => (
+                <div key={src} className="animate-ba" style={{ animationDelay: `${idx * 0.1}s` }}>
+                  <div style={{ position: "relative", borderRadius: "16px", overflow: "hidden", border: "2px solid var(--ba-border-color)", boxShadow: "0 4px 15px rgba(0,0,0,0.05)" }}>
+                    <img src={src} alt="snapshot" style={{ width: "100%", display: "block" }} />
+                    <div style={{ position: "absolute", bottom: "0", left: "0", background: "rgba(0,0,0,0.6)", color: "white", padding: "4px 12px", fontSize: "10px", fontWeight: "bold" }}>
+                      SNAPSHOT_ID_{idx.toString().padStart(3, '0')}
+                    </div>
+                  </div>
+                </div>
               ))
             ) : (
-              <p className="muted">暂无视频快照</p>
+              <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "100px", border: "2px dashed var(--ba-border-color)", borderRadius: "20px" }}>
+                <p className="muted" style={{ fontWeight: "900" }}>NO VISUAL DATA CAPTURED</p>
+              </div>
             )}
           </div>
         ) : null}
       </article>
 
       {job?.error ? (
-        <div className="ba-glass" style={{ marginTop: "20px", padding: "16px", borderRadius: "14px", border: "1px solid var(--ba-pink)", color: "var(--ba-pink)" }}>
-          任务异常：{job.error}
+        <div className="animate-ba" style={{ marginTop: "32px", padding: "24px", borderRadius: "16px", background: "rgba(255, 107, 157, 0.1)", border: "2.5px solid var(--ba-pink)", color: "var(--ba-pink)", fontWeight: "900", display: "flex", gap: "16px", alignItems: "center" }}>
+          <span style={{ fontSize: "24px" }}>⚠</span>
+          <div>
+            <div style={{ fontSize: "12px", opacity: 0.8 }}>CRITICAL SYSTEM ERROR</div>
+            {job.error}
+          </div>
         </div>
       ) : null}
     </section>

@@ -263,360 +263,164 @@ function SettingsModal({
   if (!open) return null;
 
   return (
-    <div className="modal-mask" onClick={onClose}>
-      <section className="settings-modal" onClick={(e) => e.stopPropagation()}>
-        <aside className="settings-nav">
-          <h3>设置中心</h3>
-          <button className={active === "provider" ? "active" : ""} onClick={() => setActive("provider")}>
-            <span className="nav-icon">⚙</span>
-            <span>Provider 与连通性</span>
-            <span className={`nav-dot ${providerReady ? "ok" : "warn"}`} />
-          </button>
-          <button className={active === "tts" ? "active" : ""} onClick={() => setActive("tts")}>
-            <span className="nav-icon">♪</span>
-            <span>硅基流动 TTS</span>
-            <span className={`nav-dot ${ttsReady ? "ok" : "warn"}`} />
-          </button>
-          <button className={active === "vn" ? "active" : ""} onClick={() => setActive("vn")}>
-            <span className="nav-icon">★</span>
-            <span>GalGame 参数</span>
-          </button>
-          <button className={active === "motion" ? "active" : ""} onClick={() => setActive("motion")}>
-            <span className="nav-icon">✦</span>
-            <span>动效与沉浸</span>
-          </button>
-          <button className={active === "about" ? "active" : ""} onClick={() => setActive("about")}>
-            <span className="nav-icon">?</span>
-            <span>架构说明</span>
-          </button>
-        </aside>
-
-        <div className="settings-content">
-          <div className="settings-top">
-            <span className="muted" style={{ fontWeight: "bold", color: "var(--ba-blue)" }}>系统设置中心</span>
-            <button className="ba-button" style={{ height: "36px", padding: "0 16px", fontSize: "13px", background: "var(--ba-bg)" }} onClick={onClose}>
-              关闭
+    <div className="modal-mask" onClick={onClose} style={{ background: "rgba(0, 163, 255, 0.1)", backdropFilter: "blur(12px)" }}>
+      <section className="settings-modal animate-ba" onClick={(e) => e.stopPropagation()} style={{ width: "1100px", height: "85vh", border: "3px solid var(--ba-blue)" }}>
+        <aside className="settings-nav" style={{ width: "280px", padding: "40px 16px" }}>
+          <div style={{ marginBottom: "30px", padding: "0 12px" }}>
+            <div style={{ fontSize: "10px", fontWeight: "900", color: "var(--ba-blue)", opacity: 0.6 }}>SYSTEM ADMINISTRATION</div>
+            <h3 style={{ margin: 0, fontSize: "22px", fontWeight: "900", color: "var(--ba-blue)" }}>终端设置</h3>
+          </div>
+          
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <button className={`ba-nav-item ${active === "provider" ? "active" : ""}`} onClick={() => setActive("provider")}>
+              <div className="ba-nav-icon">⚙</div>
+              <span>核心 Provider</span>
+              <span className={`nav-dot ${providerReady ? "ok" : "warn"}`} />
+            </button>
+            <button className={`ba-nav-item ${active === "tts" ? "active" : ""}`} onClick={() => setActive("tts")}>
+              <div className="ba-nav-icon">♪</div>
+              <span>语音系统 (TTS)</span>
+              <span className={`nav-dot ${ttsReady ? "ok" : "warn"}`} />
+            </button>
+            <button className={`ba-nav-item ${active === "vn" ? "active" : ""}`} onClick={() => setActive("vn")}>
+              <div className="ba-nav-icon">★</div>
+              <span>交互逻辑 (GAL)</span>
+            </button>
+            <button className={`ba-nav-item ${active === "motion" ? "active" : ""}`} onClick={() => setActive("motion")}>
+              <div className="ba-nav-icon">✦</div>
+              <span>系统表现 (UI)</span>
             </button>
           </div>
-          <div className="settings-scroll">
+
+          <div style={{ marginTop: "auto", padding: "20px", background: "rgba(0, 163, 255, 0.05)", borderRadius: "16px", border: "1px solid var(--ba-blue-light)" }}>
+            <div style={{ fontSize: "10px", fontWeight: "900", color: "var(--ba-blue)" }}>SCHALE SECURITY</div>
+            <div style={{ fontSize: "11px", color: "var(--ba-text-soft)", marginTop: "4px" }}>您的数据已受沙勒加密协议保护。</div>
+          </div>
+        </aside>
+
+        <div className="settings-content" style={{ padding: "40px" }}>
+          <div className="settings-top" style={{ marginBottom: "30px", borderBottom: "2px solid var(--ba-bg-base)", paddingBottom: "20px" }}>
+            <div>
+              <span style={{ background: "var(--ba-blue)", color: "white", padding: "2px 12px", borderRadius: "4px", fontSize: "10px", fontWeight: "900" }}>ROOT_ACCESS</span>
+              <h2 style={{ margin: "8px 0 0", fontSize: "28px", fontWeight: "900" }}>
+                {active === "provider" && "核心引擎配置"}
+                {active === "tts" && "音频合成模组"}
+                {active === "vn" && "剧情演练参数"}
+                {active === "motion" && "视觉渲染引擎"}
+                {active === "about" && "系统协议"}
+              </h2>
+            </div>
+            <button className="ba-button" style={{ height: "44px", background: "var(--ba-bg-base)", border: "none", boxShadow: "none" }} onClick={onClose}>
+              EXIT TERMINAL
+            </button>
+          </div>
+
+          <div className="settings-scroll" style={{ paddingRight: "10px" }}>
             {active === "provider" ? (
-              <section className="settings-card">
-                <h2>Provider 配置</h2>
-                <p className="muted">用于摘要生成与模型调用。</p>
-                <div className="settings-grid">
-                <label>
-                  <span>Base URL（建议以 /v1 结尾）</span>
-                  <input value={provider.baseUrl} onChange={(e) => onChange({ ...settings, provider: { ...provider, baseUrl: e.target.value } })} placeholder="https://api.example.com/v1" />
-                </label>
-                <label>
-                  <span>API Key</span>
-                  <div className="input-with-action">
-                    <input type={showProviderKey ? "text" : "password"} value={provider.apiKey} onChange={(e) => onChange({ ...settings, provider: { ...provider, apiKey: e.target.value } })} placeholder="sk-..." />
-                    <button type="button" className="ba-button" style={{ height: "36px", padding: "0 12px", fontSize: "12px" }} onClick={() => setShowProviderKey((x) => !x)}>{showProviderKey ? "隐藏" : "显示"}</button>
+              <section className="animate-ba">
+                <div className="ba-card" style={{ padding: "30px", marginBottom: "24px", border: "2.5px solid var(--ba-blue-light)" }}>
+                  <div className="ba-section-title">LLM_CORE_CONNECTIVITY / 核心连通性</div>
+                  <div className="settings-grid" style={{ gap: "24px" }}>
+                    <label className="field">
+                      <span>API_ENDPOINT / 接口基址</span>
+                      <input value={provider.baseUrl} onChange={(e) => onChange({ ...settings, provider: { ...provider, baseUrl: e.target.value } })} placeholder="https://api.example.com/v1" />
+                    </label>
+                    <label className="field">
+                      <span>ACCESS_KEY / 通行密钥</span>
+                      <div className="input-with-action">
+                        <input type={showProviderKey ? "text" : "password"} value={provider.apiKey} onChange={(e) => onChange({ ...settings, provider: { ...provider, apiKey: e.target.value } })} placeholder="sk-..." />
+                        <button type="button" className="ba-button" style={{ height: "48px", boxShadow: "none", border: "2px solid var(--ba-border-color)" }} onClick={() => setShowProviderKey((x) => !x)}>{showProviderKey ? "HIDE" : "SHOW"}</button>
+                      </div>
+                    </label>
+                    <div className="split">
+                      <label className="field">
+                        <span>MODEL_IDENTIFIER / 选定模型</span>
+                        <input value={provider.model} onChange={(e) => onChange({ ...settings, provider: { ...provider, model: e.target.value } })} />
+                      </label>
+                      <label className="field">
+                        <span>TEMPERATURE / 发散度</span>
+                        <input type="number" step={0.1} value={provider.temperature} onChange={(e) => onChange({ ...settings, provider: { ...provider, temperature: Number(e.target.value) } })} />
+                      </label>
+                    </div>
                   </div>
-                </label>
-                <label>
-                  <span style={{ fontSize: "12px", color: "var(--ba-text-soft)", marginBottom: "4px", display: "block" }}>Model</span>
-                  {modelOptions.length ? (
-                    <FancySelect
-                      value={provider.model}
-                      onChange={(v) => onChange({ ...settings, provider: { ...provider, model: v } })}
-                      options={modelOptions}
-                    />
-                  ) : (
-                    <input
-                      style={{ height: "40px", borderRadius: "10px", border: "1px solid var(--ba-border)", padding: "0 12px", fontSize: "14px", width: "100%" }}
-                      value={provider.model}
-                      onChange={(e) => onChange({ ...settings, provider: { ...provider, model: e.target.value } })}
-                      placeholder="gpt-4o-mini"
-                    />
-                  )}
-                  <small className="muted" style={{ marginTop: "4px", display: "block" }}>
-                    {modelOptions.length
-                      ? "已加载模型列表，可直接下拉选择"
-                      : "先点“一键诊断连通性”以拉取模型列表"}
-                  </small>
-                </label>
-                <div className="split">
-                  <label>
-                    <span style={{ fontSize: "12px", color: "var(--ba-text-soft)", marginBottom: "4px", display: "block" }}>Temperature</span>
-                    <input style={{ height: "40px", borderRadius: "10px", border: "1px solid var(--ba-border)", padding: "0 12px", fontSize: "14px", width: "100%" }} type="number" min={0} max={2} step={0.1} value={provider.temperature ?? 0.4} onChange={(e) => onChange({ ...settings, provider: { ...provider, temperature: Number(e.target.value) } })} />
-                  </label>
-                  <label>
-                    <span style={{ fontSize: "12px", color: "var(--ba-text-soft)", marginBottom: "4px", display: "block" }}>Max Tokens</span>
-                    <input style={{ height: "40px", borderRadius: "10px", border: "1px solid var(--ba-border)", padding: "0 12px", fontSize: "14px", width: "100%" }} type="number" min={100} max={10000} step={100} value={provider.maxTokens ?? 2200} onChange={(e) => onChange({ ...settings, provider: { ...provider, maxTokens: Number(e.target.value) } })} />
-                  </label>
-                </div>
-                  <div className="settings-actions" style={{ marginTop: "16px" }}>
-                    <button className="ba-button" style={{ background: "var(--ba-bg)", height: "40px", fontSize: "13px" }} onClick={() => void onRunCheck(settings.provider)} disabled={checking}>{checking ? "诊断中..." : "一键诊断连通性"}</button>
+                  <div style={{ marginTop: "30px" }}>
+                    <button className="ba-button ba-button-primary active-shrink" style={{ width: "100%", height: "54px" }} onClick={() => void onRunCheck(settings.provider)} disabled={checking}>
+                      {checking ? "DIAGNOSING..." : "INITIALIZE DIAGNOSTIC / 启动系统诊断"}
+                    </button>
                   </div>
                 </div>
 
-                {result ? (
-                  <div className={`health-card ${result.ok ? "good" : "bad"}`}>
-                    <p>结果：<strong>{result.ok ? "可用" : "不可用"}</strong></p>
-                    <p>状态码：{result.status ?? "-"}</p>
-                    <p>耗时：{result.latencyMs ?? "-"} ms</p>
-                    <p>命中端点：{result.usedEndpoint ?? "-"}</p>
-                    {result.models?.length ? <p>可用模型：{result.models.length} 个（已同步到 Model 下拉框）</p> : null}
-                    {result.modelsError ? <p className="muted">模型列表：{result.modelsError}</p> : null}
-                    {result.error ? <p className="error-text">{result.error}</p> : null}
-                    {result.preview ? <pre>{result.preview}</pre> : null}
+                {result && (
+                  <div className={`health-card ${result.ok ? "good" : "bad"} animate-ba`} style={{ padding: "20px", borderRadius: "16px", border: "2px solid" }}>
+                    <div style={{ fontWeight: "900", marginBottom: "10px" }}>DIAGNOSTIC_REPORT: {result.ok ? "SUCCESS" : "FAILED"}</div>
+                    <pre style={{ margin: 0, fontSize: "12px", opacity: 0.8 }}>{result.preview || result.error}</pre>
                   </div>
-                ) : null}
+                )}
               </section>
             ) : null}
 
             {active === "tts" ? (
-              <section className="settings-card">
-              <h2>硅基流动 TTS 配置</h2>
-              <p className="muted">用于 GalGame 语音朗读，可直接试音。</p>
-              <div className="settings-grid">
-                <label>
-                  <span>TTS Base URL</span>
-                  <input value={tts.baseUrl} onChange={(e) => onChange({ ...settings, tts: { ...tts, baseUrl: e.target.value } })} placeholder="https://api.siliconflow.cn/v1" />
-                </label>
-                <label>
-                  <span>TTS API Key</span>
-                  <div className="input-with-action">
-                    <input type={showTtsKey ? "text" : "password"} value={tts.apiKey} onChange={(e) => onChange({ ...settings, tts: { ...tts, apiKey: e.target.value } })} placeholder="sk-..." />
-                    <button type="button" className="ghost-btn mini" onClick={() => setShowTtsKey((x) => !x)}>{showTtsKey ? "隐藏" : "显示"}</button>
-                  </div>
-                </label>
-                <div className="split">
-                  <label>
-                    <span>TTS Model</span>
-                    <FancySelect
-                      value={tts.model}
-                      onChange={(v) => onChange({ ...settings, tts: { ...tts, model: v } })}
-                      options={[
-                        { value: "FunAudioLLM/CosyVoice2-0.5B", label: "FunAudioLLM/CosyVoice2-0.5B" },
-                        { value: "fnlp/MOSS-TTSD-v0.5", label: "fnlp/MOSS-TTSD-v0.5" }
-                      ]}
-                    />
-                  </label>
-                  <label>
-                    <span>官方预设音色</span>
-                    <FancySelect
-                      value={OFFICIAL_TTS_VOICES.some((x) => x.value === tts.voice) ? tts.voice : "__custom"}
-                      onChange={(v) => {
-                        if (v === "__custom") return;
-                        onChange({ ...settings, tts: { ...tts, voice: v } });
-                      }}
-                      options={[...OFFICIAL_TTS_VOICES, { value: "__custom", label: "使用自定义 voice（下方输入）" }]}
-                    />
-                  </label>
-                </div>
-                <label>
-                  <span>当前 Voice URI（可粘贴自定义 speech:...）</span>
-                  <input value={tts.voice} onChange={(e) => onChange({ ...settings, tts: { ...tts, voice: e.target.value } })} />
-                </label>
-                <div className="split">
-                  <label>
-                    <span>格式</span>
-                    <FancySelect
-                      value={tts.responseFormat}
-                      onChange={(v) => onChange({ ...settings, tts: { ...tts, responseFormat: v as TtsConfig["responseFormat"] } })}
-                      options={[
-                        { value: "mp3", label: "mp3" },
-                        { value: "wav", label: "wav" },
-                        { value: "opus", label: "opus" },
-                        { value: "pcm", label: "pcm" }
-                      ]}
-                    />
-                  </label>
-                  <label>
-                    <span>速度</span>
-                    <input type="number" min={0.5} max={2} step={0.1} value={tts.speed} onChange={(e) => onChange({ ...settings, tts: { ...tts, speed: Number(e.target.value) } })} />
-                  </label>
-                </div>
-                <label>
-                  <span>采样率</span>
-                  <FancySelect
-                    value={String(tts.sampleRate || 44100)}
-                    onChange={(v) => onChange({ ...settings, tts: { ...tts, sampleRate: Number(v) } })}
-                    options={[
-                      { value: "32000", label: "32000" },
-                      { value: "44100", label: "44100" },
-                      { value: "48000", label: "48000" }
-                    ]}
-                  />
-                </label>
-                <div className="settings-actions">
-                  <button type="button" className="ghost-btn" onClick={() => void onRunTtsTest(settings.tts)} disabled={ttsChecking}>
-                    {ttsChecking ? "试音中..." : "测试语音效果"}
-                  </button>
-                  <button type="button" className="ghost-btn" onClick={() => void onLoadVoices(settings.tts)} disabled={voiceBusy}>
-                    {voiceBusy ? "加载中..." : "拉取我的音色"}
-                  </button>
-                </div>
-                <div className="settings-grid">
-                  <label>
-                    <span>上传音色名称</span>
-                    <input value={voiceName} onChange={(e) => setVoiceName(e.target.value)} placeholder="例如：我的女主音色" />
-                  </label>
-                  <label>
-                    <span>参考文案（与上传音频一致）</span>
-                    <textarea rows={2} value={voiceText} onChange={(e) => setVoiceText(e.target.value)} placeholder="输入参考音频对应文本，建议 8-10 秒语音" />
-                  </label>
-                  <label>
-                    <span>上传参考音频（小于等于 30s）</span>
-                    <input
-                      type="file"
-                      accept="audio/*"
-                      onChange={(e) => setVoiceFile(e.target.files?.[0] || null)}
-                    />
-                    {voicePreviewUrl ? <audio className="audio-preview" controls src={voicePreviewUrl} /> : null}
-                  </label>
-                  <div className="settings-actions">
-                    <button
-                      type="button"
-                      className="ghost-btn"
-                      disabled={voiceBusy || !voiceFile || !voiceName.trim() || !voiceText.trim()}
-                      onClick={() => {
-                        if (!voiceFile) return;
-                        void onUploadVoice(settings.tts, voiceFile, voiceName.trim(), voiceText.trim());
-                      }}
-                    >
-                      {voiceBusy ? "上传中..." : "上传并注册音色"}
-                    </button>
+              <section className="animate-ba">
+                <div className="ba-card" style={{ padding: "30px", border: "2.5px solid var(--ba-blue-light)" }}>
+                  <div className="ba-section-title">AUDIO_SYNTHESIS_UNIT / 音频合成单元</div>
+                  <div className="settings-grid" style={{ gap: "20px" }}>
+                    <label className="field">
+                      <span>BASE_URL</span>
+                      <input value={tts.baseUrl} onChange={(e) => onChange({ ...settings, tts: { ...tts, baseUrl: e.target.value } })} />
+                    </label>
+                    <label className="field">
+                      <span>VOICE_URI</span>
+                      <input value={tts.voice} onChange={(e) => onChange({ ...settings, tts: { ...tts, voice: e.target.value } })} />
+                    </label>
+                    <div className="settings-actions">
+                      <button className="ba-button" style={{ flex: 1 }} onClick={() => void onRunTtsTest(settings.tts)} disabled={ttsChecking}>TEST VOICE</button>
+                      <button className="ba-button" style={{ flex: 1 }} onClick={() => void onLoadVoices(settings.tts)} disabled={voiceBusy}>FETCH ASSETS</button>
+                    </div>
                   </div>
                 </div>
-                {voices.length ? (
-                  <label>
-                    <span>我的音色（自定义上传）</span>
-                    <FancySelect
-                      value={tts.voice}
-                      onChange={(v) => onChange({ ...settings, tts: { ...tts, voice: v } })}
-                      options={customVoiceOptions}
-                    />
-                  </label>
-                ) : null}
-                {ttsResult ? (
-                  <div className={`health-card ${ttsResult.ok ? "good" : "bad"}`}>
-                    <p>结果：<strong>{ttsResult.ok ? "试音成功" : "试音失败"}</strong></p>
-                    <p>状态码：{ttsResult.status ?? "-"}</p>
-                    {ttsResult.error ? <p className="error-text">{ttsResult.error}</p> : null}
-                    {ttsResult.detail ? <pre>{ttsResult.detail}</pre> : null}
-                  </div>
-                ) : null}
-              </div>
               </section>
             ) : null}
 
             {active === "vn" ? (
-              <section className="settings-card">
-              <h2>GalGame 参数</h2>
-              <div className="settings-grid">
-                <label>
-                  <span>角色预设</span>
-                  <FancySelect
-                    value={settings.vn.presetId}
-                    onChange={(v) => {
-                      const p = CHARACTER_PRESETS.find((x) => x.id === v) || CHARACTER_PRESETS[0];
-                      onChange({
-                        ...settings,
-                        vn: {
-                          ...settings.vn,
-                          presetId: p.id,
-                          characterName: p.characterName,
-                          stylePrompt: p.stylePrompt
-                        }
-                      });
-                    }}
-                    options={CHARACTER_PRESETS.map((x) => ({ value: x.id, label: x.name }))}
-                  />
-                </label>
-                <label>
-                  <span>角色名称</span>
-                  <input value={settings.vn.characterName} onChange={(e) => onChange({ ...settings, vn: { ...settings.vn, characterName: e.target.value } })} />
-                </label>
-                <label>
-                  <span>角色风格提示词</span>
-                  <textarea rows={3} value={settings.vn.stylePrompt} onChange={(e) => onChange({ ...settings, vn: { ...settings.vn, stylePrompt: e.target.value } })} placeholder="会自动拼接到系统提示词中" />
-                </label>
-                <label>
-                  <span>打字速度（字/秒）</span>
-                  <input type="number" min={8} max={60} value={settings.vn.textSpeed} onChange={(e) => onChange({ ...settings, vn: { ...settings.vn, textSpeed: Number(e.target.value) } })} />
-                </label>
-                <label className="switch-row">
-                  <button type="button" className={`switch-chip ${settings.vn.autoPlay ? "on" : ""}`} onClick={() => onChange({ ...settings, vn: { ...settings.vn, autoPlay: !settings.vn.autoPlay } })}>
-                    <span className="dot" /> 自动播放语音
-                  </button>
-                </label>
-              </div>
+              <section className="animate-ba">
+                <div className="ba-card" style={{ padding: "30px", border: "2.5px solid var(--ba-blue-light)" }}>
+                  <div className="ba-section-title">STORYBOARD_PARAMETERS / 剧情参数</div>
+                  <div className="settings-grid" style={{ gap: "24px" }}>
+                    <label className="field">
+                      <span>ACTOR_NAME / 角色名称</span>
+                      <input value={settings.vn.characterName} onChange={(e) => onChange({ ...settings, vn: { ...settings.vn, characterName: e.target.value } })} />
+                    </label>
+                    <label className="field">
+                      <span>STYLE_DIRECTIVE / 风格提示词</span>
+                      <textarea rows={4} value={settings.vn.stylePrompt} onChange={(e) => onChange({ ...settings, vn: { ...settings.vn, stylePrompt: e.target.value } })} />
+                    </label>
+                  </div>
+                </div>
               </section>
             ) : null}
 
             {active === "motion" ? (
-              <section className="settings-card">
-              <h2>动效控制</h2>
-              <p className="muted">控制气泡感、呼吸感和页面悬浮交互强度。</p>
-              <div className="settings-grid">
-                <label>
-                  <span>整体动效强度：{settings.ui.motionLevel}%</span>
-                  <input type="range" min={10} max={100} value={settings.ui.motionLevel} onChange={(e) => onChange({ ...settings, ui: { ...settings.ui, motionLevel: Number(e.target.value) } })} />
-                </label>
-                <label>
-                  <span>气泡密度：{settings.ui.bubbleLevel}%</span>
-                  <input type="range" min={0} max={100} value={settings.ui.bubbleLevel} onChange={(e) => onChange({ ...settings, ui: { ...settings.ui, bubbleLevel: Number(e.target.value) } })} />
-                </label>
-                <label>
-                  <span>全局蒙版透明度：{settings.ui.homeOverlayTransparency ?? 72}%（100=全透，0=不透）</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={settings.ui.homeOverlayTransparency ?? 72}
-                    onChange={(e) => onChange({ ...settings, ui: { ...settings.ui, homeOverlayTransparency: Number(e.target.value) } })}
-                  />
-                </label>
-                <label className="switch-row">
-                  <button type="button" className={`switch-chip ${settings.ui.timelineAnimate ? "on" : ""}`} onClick={() => onChange({ ...settings, ui: { ...settings.ui, timelineAnimate: !settings.ui.timelineAnimate } })}>
-                    <span className="dot" /> 时间轴动画
-                  </button>
-                </label>
-                <label>
-                  <span>全局背景图（影响底层蒙版）</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={async (e) => {
-                      const f = e.target.files?.[0];
-                      if (!f) return;
-                      onChange({ ...settings, ui: { ...settings.ui, globalBackground: await toOptimizedImageDataUrl(f) } });
-                    }}
-                  />
-                  {settings.ui.globalBackground ? <img className="bg-preview" src={settings.ui.globalBackground} alt="bg-preview" /> : null}
-                  <div className="settings-actions">
-                    <button type="button" className="ghost-btn mini" onClick={() => onChange({ ...settings, ui: { ...settings.ui, globalBackground: "" } })}>
-                      清除背景图
-                    </button>
+              <section className="animate-ba">
+                <div className="ba-card" style={{ padding: "30px", border: "2.5px solid var(--ba-blue-light)" }}>
+                  <div className="ba-section-title">RENDER_ENGINE_SETTINGS / 渲染引擎</div>
+                  <div className="settings-grid" style={{ gap: "30px" }}>
+                    <label className="field">
+                      <span>MOTION_INTENSITY / 动效强度: {settings.ui.motionLevel}%</span>
+                      <input type="range" min={10} max={100} value={settings.ui.motionLevel} onChange={(e) => onChange({ ...settings, ui: { ...settings.ui, motionLevel: Number(e.target.value) } })} />
+                    </label>
+                    <label className="field">
+                      <span>OVERLAY_OPACITY / 蒙版透明度: {settings.ui.homeOverlayTransparency}%</span>
+                      <input type="range" min={0} max={100} value={settings.ui.homeOverlayTransparency} onChange={(e) => onChange({ ...settings, ui: { ...settings.ui, homeOverlayTransparency: Number(e.target.value) } })} />
+                    </label>
                   </div>
-                </label>
-              </div>
-              </section>
-            ) : null}
-
-            {active === "about" ? (
-              <section className="settings-card">
-              <h2>当前规则</h2>
-              <ul className="plain-list">
-                <li>连通性检测必须校验 OpenAI 兼容 JSON，非 JSON 即失败。</li>
-                <li>工作台内容用按钮分页，减少信息拥挤。</li>
-                <li>GalGame 模式支持立绘差分、BGM 预设与上传、语音朗读。</li>
-              </ul>
+                </div>
               </section>
             ) : null}
           </div>
 
-          <div className="settings-footer">
-            <button className="ghost-btn" onClick={onClose}>
-              取消
-            </button>
-            <button className="solid-btn" onClick={onSave}>
-              保存设置
-            </button>
+          <div className="settings-footer" style={{ marginTop: "auto", paddingTop: "30px", borderTop: "2px solid var(--ba-bg-base)" }}>
+            <button className="ba-button" style={{ border: "none", background: "none", boxShadow: "none" }} onClick={onClose}>CANCEL</button>
+            <button className="ba-button ba-button-primary" style={{ width: "200px" }} onClick={onSave}>SAVE CHANGES</button>
           </div>
         </div>
       </section>
@@ -1469,6 +1273,12 @@ export default function HomePage(): React.ReactNode {
     <main
       className={`ba-container ${isModeFullscreen ? "immersive-root" : ""}`}
       style={{
+        display: "grid",
+        gridTemplateColumns: isModeFullscreen ? "1fr" : "300px 1fr",
+        height: "100dvh",
+        width: "100vw",
+        overflow: "hidden",
+        position: "relative",
         ["--motion-level" as string]: settings.ui.motionLevel,
         ["--home-overlay-opacity" as string]: String(globalOverlayOpacity),
         ["--global-overlay-opacity" as string]: String(globalOverlayOpacity),
@@ -1476,7 +1286,9 @@ export default function HomePage(): React.ReactNode {
       } as React.CSSProperties}
       onMouseMove={onMove}
     >
-      <div className="bg-pattern" />
+      {/* 碧蓝档案全局装饰层 */}
+      <div className="ba-grid-overlay" />
+      
       <div className="bubble-layer" style={{ opacity: settings.ui.bubbleLevel / 100 }}>
         <span className="bubble b1" />
         <span className="bubble b2" />
@@ -1486,56 +1298,63 @@ export default function HomePage(): React.ReactNode {
       </div>
 
       {!isModeFullscreen && (
-        <aside className="ba-sidebar ba-glass">
-          <div className="ba-sidebar-header">
-            <div className="ba-logo-text">MomoTalk</div>
-            <p className="muted" style={{ fontSize: "10px", marginTop: "4px" }}>SCHALE TECHNOLOGY</p>
+        <aside className="ba-sidebar animate-ba">
+          <div className="ba-sidebar-header" style={{ marginBottom: "40px", padding: "0 12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{ width: "48px", height: "48px", background: "var(--ba-blue)", borderRadius: "50%", display: "flex", alignItems: "center", justifyCenter: "center", color: "white", fontSize: "24px", fontWeight: "900", boxShadow: "0 0 15px var(--ba-blue-glow)" }}>
+                <span style={{ margin: "auto" }}>S</span>
+              </div>
+              <div>
+                <div className="ba-logo-text" style={{ fontSize: "20px" }}>MomoTalk</div>
+                <div style={{ fontSize: "10px", fontWeight: "800", color: "var(--ba-blue)", letterSpacing: "0.1em" }}>SCHALE OS v1.0</div>
+              </div>
+            </div>
           </div>
-          <nav style={{ flex: 1 }}>
+
+          <nav style={{ flex: 1, display: "flex", flexDirection: "column", gap: "12px" }}>
             <div className={`ba-nav-item ${activeNav === "home" ? "active" : ""}`} onClick={() => setActiveNav("home")}>
-              <span style={{ fontSize: "18px" }}>🏠</span>
-              <span className="ba-nav-text">首页</span>
+              <div className="ba-nav-icon">🏠</div>
+              <span className="ba-nav-text">主页中心</span>
             </div>
             <div className={`ba-nav-item ${activeNav === "start" ? "active" : ""}`} onClick={() => setActiveNav("start")}>
-              <span style={{ fontSize: "18px" }}>🚀</span>
-              <span className="ba-nav-text">工作台</span>
+              <div className="ba-nav-icon">🚀</div>
+              <span className="ba-nav-text">任务调度</span>
             </div>
             <div className={`ba-nav-item ${activeNav === "saves" ? "active" : ""}`} onClick={() => setActiveNav("saves")}>
-              <span style={{ fontSize: "18px" }}>📖</span>
-              <span className="ba-nav-text">历史</span>
+              <div className="ba-nav-icon">📖</div>
+              <span className="ba-nav-text">任务档案</span>
             </div>
             <div className={`ba-nav-item ${activeNav === "workshop" ? "active" : ""}`} onClick={() => setActiveNav("workshop")}>
-              <span style={{ fontSize: "18px" }}>🎨</span>
+              <div className="ba-nav-icon">🎨</div>
               <span className="ba-nav-text">角色工坊</span>
             </div>
           </nav>
-          <div className="ba-nav-item" onClick={openSettings}>
-            <span style={{ fontSize: "18px" }}>⚙️</span>
-            <span className="ba-nav-text">系统设置</span>
+
+          <div style={{ padding: "20px 12px", borderTop: "1px solid var(--ba-border-color)" }}>
+            <div className="ba-nav-item" onClick={openSettings}>
+              <div className="ba-nav-icon">⚙️</div>
+              <span className="ba-nav-text">系统设置</span>
+            </div>
           </div>
         </aside>
       )}
 
-      <section className="ba-main-content">
+      <section className="ba-main-content" style={{ padding: isModeFullscreen ? "0" : "40px", position: "relative" }}>
         {activeNav === "home" && (
-          <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <section className="ba-card animate-ios hover-lift" style={{ maxWidth: "800px", textAlign: "center" }}>
-              <p className="ba-section-title" style={{ justifyContent: "center" }}>视频解析工作室</p>
-              <h1 className="logo-title brand-logo" style={{ transform: "none", filter: "none", display: "block" }}>
-                <span className="brand-video">Video</span>
-                <span className="brand-two">2</span>
-                <span className="brand-gal">Galgame</span>
-              </h1>
-              <p className="hero-sub" style={{ margin: "24px auto" }}>{typedSub}</p>
-              <div className="hero-tags" style={{ justifyContent: "center" }}>
-                <span>视频解析</span>
-                <span>智能摘要</span>
-                <span>视觉小说</span>
-                <span>语音演绎</span>
+          <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }} className="animate-ba">
+            <section className="ba-card" style={{ maxWidth: "800px", padding: "60px", textAlign: "center", border: "2px solid var(--ba-blue-light)" }}>
+              <div style={{ position: "absolute", top: "0", left: "0", background: "var(--ba-blue)", color: "white", padding: "4px 20px", fontSize: "12px", fontWeight: "900", borderBottomRightRadius: "12px" }}>
+                WELCOME TO SCHALE
               </div>
-              <div style={{ marginTop: "40px" }}>
-                <button className="ba-button ba-button-primary active-shrink" onClick={() => setActiveNav("start")}>
-                  立即开始解析
+              <p className="ba-section-title" style={{ justifyContent: "center" }}>MISSION CONTROL CENTER</p>
+              <h1 className="logo-title brand-logo" style={{ transform: "none", filter: "none", display: "flex", flexDirection: "column", gap: "10px", margin: "40px 0" }}>
+                <span className="brand-video" style={{ fontSize: "80px" }}>VIDEO FETCH</span>
+                <span className="brand-gal" style={{ fontSize: "40px", opacity: 0.8 }}>SYSTEM TERMINAL</span>
+              </h1>
+              <p className="hero-sub" style={{ margin: "24px auto", maxWidth: "500px", fontSize: "18px", color: "var(--ba-text-soft)", fontStyle: "italic" }}>{typedSub}</p>
+              <div style={{ marginTop: "60px" }}>
+                <button className="ba-button ba-button-primary animate-ba delay-1" onClick={() => setActiveNav("start")}>
+                  INITIALIZE MISSION
                 </button>
               </div>
             </section>
@@ -1543,10 +1362,17 @@ export default function HomePage(): React.ReactNode {
         )}
 
         {activeNav === "start" && !isModeFullscreen && (
-          <div className="animate-ios" style={{ maxWidth: "1000px", margin: "0 auto" }}>
-            <div className="ba-section-title">工作台</div>
+          <div className="animate-ba" style={{ maxWidth: "1100px", margin: "0 auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "32px" }}>
+              <div>
+                <div className="ba-section-title">ACTIVE OPERATION / 正在执行</div>
+                <h2 style={{ margin: 0, fontSize: "32px", fontWeight: "900", color: "var(--ba-text-main)" }}>任务控制台</h2>
+              </div>
+              <div style={{ fontSize: "12px", fontWeight: "bold", color: "var(--ba-blue)", opacity: 0.6 }}>TIMESTAMP: {new Date().toLocaleTimeString()}</div>
+            </div>
+
             {startView === "input" ? (
-              <div className="ba-card">
+              <div className="animate-ba delay-1">
                 <InputPanel
                   onSubmit={handleSubmit}
                   disabled={busy}
@@ -1567,23 +1393,29 @@ export default function HomePage(): React.ReactNode {
             ) : null}
 
             {startView === "waiting" ? (
-              <div className="ba-card">
-                <div className="waiting-panel" style={{ minHeight: "400px" }}>
-                  <h2 className="ba-section-title">解析中...</h2>
-                  <div className="waiting-progress" style={{ width: "100%" }}>
-                    <div className="waiting-progress-bar" style={{ width: `${stageProgress}%` }} />
+              <div className="ba-card animate-ba" style={{ padding: "60px", textAlign: "center" }}>
+                <div className="waiting-panel" style={{ minHeight: "300px" }}>
+                  <div style={{ width: "80px", height: "80px", margin: "0 auto 30px", border: "4px solid var(--ba-blue-light)", borderTopColor: "var(--ba-blue)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+                  <h2 className="ba-section-title" style={{ justifyContent: "center", fontSize: "24px" }}>数据解析中...</h2>
+                  <div className="waiting-progress" style={{ width: "100%", height: "8px", background: "var(--ba-bg-base)", borderRadius: "10px", overflow: "hidden", margin: "30px 0" }}>
+                    <div className="waiting-progress-bar" style={{ width: `${stageProgress}%`, height: "100%", background: "var(--ba-blue)", boxShadow: "0 0 10px var(--ba-blue-glow)" }} />
                   </div>
-                  <p className="muted">{waitingTheme.line}</p>
+                  <p style={{ color: "var(--ba-text-soft)", fontWeight: "bold" }}>{waitingTheme.line}</p>
                 </div>
               </div>
             ) : null}
 
             {startView === "select" && job?.summaryMarkdown ? (
-              <div className="ba-card animate-ios">
-                <div className="ba-section-title">选择阅读模式</div>
-                <div className="mode-select-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-                  <button className="ba-button ba-button-primary" onClick={() => setStartView("gal")}>GalGame 模式</button>
-                  <button className="ba-button" style={{ background: "var(--ba-bg)" }} onClick={() => setStartView("analysis")}>原文摘要</button>
+              <div className="ba-card animate-ba delay-1" style={{ padding: "40px" }}>
+                <div className="ba-section-title">MISSION COMPLETED / 解析完成</div>
+                <p style={{ marginBottom: "30px", fontSize: "18px", fontWeight: "bold" }}>请选择数据呈现方式：</p>
+                <div className="mode-select-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: "30px" }}>
+                  <button className="ba-button ba-button-primary" style={{ height: "120px", fontSize: "20px" }} onClick={() => setStartView("gal")}>
+                    沉浸式回顾 (GAL)
+                  </button>
+                  <button className="ba-button" style={{ height: "120px", fontSize: "20px" }} onClick={() => setStartView("analysis")}>
+                    结构化报告 (ANALYSIS)
+                  </button>
                 </div>
               </div>
             ) : null}

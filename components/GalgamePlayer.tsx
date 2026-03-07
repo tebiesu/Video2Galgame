@@ -287,28 +287,51 @@ export function GalgamePlayer({ summary, settings, pageMode = false, speaker, ro
 
   function renderStage(extraClass = ""): React.ReactNode {
     return (
-      <div className={`gal-stage ${extraClass}`}>
-        <div className={`gal-bg ${customBg ? "custom" : ""}`} data-theme={settings.vn.defaultBackground} style={stageBackgroundStyle()} />
-        <div className="gal-character-shell">
+      <div className={`gal-stage ${extraClass}`} style={{ position: "relative", overflow: "hidden", background: "#000" }}>
+        {/* 背景层 */}
+        <div className={`gal-bg ${customBg ? "custom" : ""}`} data-theme={settings.vn.defaultBackground} style={{ ...stageBackgroundStyle(), transition: "all 1s ease" }} />
+        
+        {/* 立绘层 */}
+        <div className="gal-character-shell" style={{ zIndex: 5 }}>
           {currentSprite ? (
             <img
               key={`${expression}-${lineIndex}`}
               src={currentSprite}
               alt="sprite"
               className="gal-character gal-character-enter"
+              style={{ filter: "drop-shadow(0 20px 40px rgba(0,0,0,0.3))" }}
             />
           ) : (
-            <div className="gal-character placeholder">角色工坊未配置立绘</div>
+            <div style={{ width: "300px", height: "500px", background: "rgba(255,255,255,0.1)", border: "2px dashed rgba(255,255,255,0.3)", borderRadius: "20px", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "900" }}>
+              MISSING ASSETS
+            </div>
           )}
         </div>
 
-        <div className="gal-dialog">
-          <strong>{current.speaker}</strong>
-          <p className="typed-line">{typed || "..."}</p>
-          <div className="gal-nav">
-            <button className="nav-btn" onClick={() => setLineIndex((x) => Math.max(0, x - 1))}>上一句</button>
-            <span>{lineIndex + 1} / {lines.length}</span>
-            <button className="nav-btn primary" onClick={() => setLineIndex((x) => Math.min(lines.length - 1, x + 1))}>下一句</button>
+        {/* 碧蓝档案标准对话框 */}
+        <div style={{ position: "absolute", bottom: "40px", left: "50%", transform: "translateX(-50%)", width: "min(1100px, 94vw)", zIndex: 10 }}>
+          {/* 名牌 */}
+          <div style={{ display: "inline-block", background: "var(--ba-blue)", color: "white", padding: "6px 30px", borderRadius: "8px 20px 0 0", fontSize: "18px", fontWeight: "900", marginBottom: "-2px", marginLeft: "20px", boxShadow: "0 -4px 15px rgba(0, 163, 255, 0.3)" }}>
+            {current.speaker}
+          </div>
+          
+          {/* 对话框主体 */}
+          <div className="ba-card" style={{ padding: "30px 40px", minHeight: "160px", background: "rgba(255,255,255,0.92)", border: "2px solid var(--ba-blue)", boxShadow: "0 15px 40px rgba(0,0,0,0.2)" }}>
+            <p style={{ fontSize: "20px", fontWeight: "700", lineHeight: "1.8", color: "var(--ba-text-main)", margin: 0 }}>
+              {typed || "..."}
+            </p>
+            
+            {/* 下一步指示器 */}
+            <div style={{ position: "absolute", bottom: "20px", right: "30px", animation: "blink 1s infinite" }}>
+              <div style={{ width: "0", height: "0", borderLeft: "10px solid transparent", borderRight: "10px solid transparent", borderTop: "15px solid var(--ba-blue)" }} />
+            </div>
+          </div>
+
+          {/* 导航按钮组 */}
+          <div style={{ display: "flex", justifyContent: "center", gap: "20px", marginTop: "20px" }}>
+            <button className="ba-button" style={{ height: "40px", padding: "0 20px", background: "rgba(255,255,255,0.8)" }} onClick={() => setLineIndex((x) => Math.max(0, x - 1))}>PREV</button>
+            <div style={{ background: "rgba(0,0,0,0.5)", color: "white", padding: "8px 20px", borderRadius: "20px", fontSize: "12px", fontWeight: "bold" }}>{lineIndex + 1} / {lines.length}</div>
+            <button className="ba-button ba-button-primary" style={{ height: "40px", padding: "0 30px" }} onClick={() => setLineIndex((x) => Math.min(lines.length - 1, x + 1))}>NEXT</button>
           </div>
         </div>
       </div>
@@ -316,20 +339,20 @@ export function GalgamePlayer({ summary, settings, pageMode = false, speaker, ro
   }
 
   return (
-    <section className={pageMode ? "galgame-page animate-ios" : "galgame-panel animate-ios"}>
+    <section className={pageMode ? "galgame-page animate-ba" : "galgame-panel animate-ba"}>
       {!pageMode ? (
         <header className="galgame-head">
-          <h3>GalGame 播放模式</h3>
+          <div className="ba-section-title">IMMERSIVE REPLAY / 沉浸播放</div>
           <div className="galgame-head-actions">
-            <span className={`voice-pill ${voiceBusy ? "busy" : playVoice ? "on" : "off"}`}>
+            <span className={`voice-pill ${voiceBusy ? "busy" : playVoice ? "on" : "off"}`} style={{ padding: "8px 16px" }}>
               <i />
-              {voiceBusy ? "语音生成中" : playVoice ? "自动语音开启" : "自动语音关闭"}
+              {voiceBusy ? "VOICE GEN..." : playVoice ? "AUTO VOICE: ON" : "AUTO VOICE: OFF"}
             </span>
-            <button className="ba-button ba-glass" style={{ height: "36px", padding: "0 12px", fontSize: "12px", borderRadius: "10px", color: "var(--ba-text)" }} onClick={() => setPlayVoice((x) => !x)}>
-              朗读：{playVoice ? "开" : "关"}
+            <button className="ba-button" style={{ height: "36px", padding: "0 12px", fontSize: "12px" }} onClick={() => setPlayVoice((x) => !x)}>
+              {playVoice ? "DISABLE VOICE" : "ENABLE VOICE"}
             </button>
-            <button className="ba-button ba-glass" style={{ height: "36px", padding: "0 12px", fontSize: "12px", borderRadius: "10px", color: "var(--ba-blue)" }} onClick={() => void playLineVoice()} disabled={voiceBusy}>
-              {voiceBusy ? "加载中..." : "重播"}
+            <button className="ba-button ba-button-primary" style={{ height: "36px", padding: "0 12px", fontSize: "12px" }} onClick={() => void playLineVoice()} disabled={voiceBusy}>
+              REPLAY
             </button>
           </div>
         </header>
@@ -338,18 +361,22 @@ export function GalgamePlayer({ summary, settings, pageMode = false, speaker, ro
       <div className={pageMode ? "gal-page-stage" : ""}>
         {renderStage(pageMode ? "fullscreen" : "")}
         {pageMode ? (
-          <div className="gal-page-hud">
-            <span className={`voice-pill ${voiceBusy ? "busy" : playVoice ? "on" : "off"}`}>
-              <i />
-              {voiceBusy ? "语音生成中" : playVoice ? "自动语音开启" : "自动语音关闭"}
-            </span>
-            <button className="ba-button ba-glass" style={{ height: "36px", padding: "0 12px", fontSize: "12px", borderRadius: "10px", color: "var(--ba-text)" }} onClick={() => setPlayVoice((x) => !x)}>
-              朗读：{playVoice ? "开" : "关"}
-            </button>
-            <button className="ba-button ba-glass" style={{ height: "36px", padding: "0 12px", fontSize: "12px", borderRadius: "10px", color: "var(--ba-blue)" }} onClick={() => void playLineVoice()} disabled={voiceBusy}>
-              {voiceBusy ? "加载中..." : "重播"}
-            </button>
-            <button className="ghost-btn" onClick={() => setConfigOpen((x) => !x)}>{configOpen ? "关闭配置" : "打开配置"}</button>
+          <div className="gal-page-hud" style={{ padding: "20px", background: "linear-gradient(to bottom, rgba(0,0,0,0.4), transparent)", top: 0, left: 0, right: 0, justifyContent: "space-between", position: "absolute", zIndex: 20, display: "flex", width: "100%" }}>
+            <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
+              <span className={`voice-pill ${voiceBusy ? "busy" : playVoice ? "on" : "off"}`} style={{ background: "rgba(255,255,255,0.2)", color: "white", border: "1px solid rgba(255,255,255,0.3)" }}>
+                <i />
+                {voiceBusy ? "GENERATING..." : "VOICE READY"}
+              </span>
+            </div>
+            <div style={{ display: "flex", gap: "15px" }}>
+              <button className="ba-button ba-glass" style={{ height: "40px", color: "white", border: "1.5px solid white", background: "rgba(255,255,255,0.1)" }} onClick={() => setPlayVoice((x) => !x)}>
+                VOICE: {playVoice ? "ON" : "OFF"}
+              </button>
+              <button className="ba-button ba-glass" style={{ height: "40px", color: "white", border: "1.5px solid white", background: "rgba(255,255,255,0.1)" }} onClick={() => void playLineVoice()} disabled={voiceBusy}>
+                REPLAY
+              </button>
+              <button className="ba-button ba-button-primary" style={{ height: "40px" }} onClick={() => setConfigOpen((x) => !x)}>{configOpen ? "CLOSE CONFIG" : "SETTINGS"}</button>
+            </div>
           </div>
         ) : null}
       </div>

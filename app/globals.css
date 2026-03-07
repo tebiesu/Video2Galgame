@@ -1,268 +1,253 @@
 ﻿
 :root {
-  /* Blue Archive - Arona Design System */
+  /* Blue Archive - Arona Core Palette */
   --ba-blue: #00A3FF;
   --ba-blue-light: #E1F5FF;
   --ba-blue-deep: #0084D1;
+  --ba-blue-glow: rgba(0, 163, 255, 0.3);
   --ba-white: #FFFFFF;
-  --ba-bg: #F3F7F9;
-  --ba-text: #2D3E50;
+  --ba-bg-base: #F3F7F9;
+  --ba-text-main: #2D3E50;
   --ba-text-soft: #7A8E9F;
-  --ba-border: #DDE7ED;
-  --ba-accent: #FFB800;
-  --ba-pink: #FF6B9D;
+  --ba-accent-yellow: #FFB800;
+  --ba-accent-pink: #FF6B9D;
+  --ba-border-color: #DDE7ED;
   
-  /* iOS Style Smoothness */
+  /* Precision Radius */
+  --radius-ba: 20px;
   --ios-ease: cubic-bezier(0.32, 0.72, 0, 1);
-  --radius-ios: 24px;
-  --glass: rgba(255, 255, 255, 0.75);
 }
 
 * {
   box-sizing: border-box;
-  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
 }
 
-html, body {
+body {
   margin: 0;
   padding: 0;
   height: 100dvh;
-  background-color: var(--ba-bg);
-  color: var(--ba-text);
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
+  background-color: var(--ba-bg-base);
+  color: var(--ba-text-main);
+  font-family: "Inter", "Source Han Sans SC", "PingFang SC", sans-serif;
   overflow: hidden;
-  letter-spacing: -0.01em;
 }
 
-/* 碧蓝档案背景：对角线 + 半色调点阵 */
+/* 碧蓝档案经典背景：对角线网格 + 渐变中心发光 */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
+  z-index: -2;
+  background: 
+    linear-gradient(135deg, rgba(0, 163, 255, 0.05) 25%, transparent 25%) -50px 0,
+    linear-gradient(225deg, rgba(0, 163, 255, 0.05) 25%, transparent 25%) -50px 0,
+    linear-gradient(315deg, rgba(0, 163, 255, 0.05) 25%, transparent 25%),
+    linear-gradient(45deg, rgba(0, 163, 255, 0.05) 25%, transparent 25%);
+  background-size: 100px 100px;
+  background-color: #fdfdfd;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
   z-index: -1;
-  background-image: 
-    radial-gradient(var(--ba-border) 1px, transparent 1px),
-    linear-gradient(135deg, #fdfdfd 0%, #f3f7f9 100%);
-  background-size: 24px 24px, 100% 100%;
+  background: radial-gradient(circle at 50% 50%, rgba(225, 245, 255, 0.8) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* SCHALE 装饰网格 */
+.ba-grid-overlay {
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(var(--ba-border-color) 1px, transparent 1px);
+  background-size: 32px 32px;
+  opacity: 0.4;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* 高级容器：斜切角 + 内发光 */
+.ba-card {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(25px) saturate(180%);
+  border: 2px solid var(--ba-white);
+  box-shadow: 
+    0 15px 50px rgba(0, 163, 255, 0.08),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-ba);
+  position: relative;
+  overflow: hidden;
+}
+
+/* 装饰性细节：边角短线 */
+.ba-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 4px;
+  background: var(--ba-blue);
   opacity: 0.6;
 }
 
-/* 标志性的斜切背景装饰 */
-body::after {
-  content: "SCHALE";
-  position: fixed;
-  bottom: -20px;
-  right: -10px;
-  font-size: 15vw;
+.ba-card::before {
+  content: "DATA_NODE_SYSTEM_v1.0";
+  position: absolute;
+  top: 8px;
+  right: 15px;
+  font-size: 9px;
   font-weight: 900;
   color: var(--ba-blue);
-  opacity: 0.03;
-  font-style: italic;
-  pointer-events: none;
-  z-index: -1;
+  opacity: 0.3;
+  letter-spacing: 1px;
 }
 
-/* 优雅的毛玻璃容器 */
-.ba-glass {
-  background: var(--glass);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 32px rgba(0, 163, 255, 0.08);
+/* MomoTalk 侧边栏样式 */
+.ba-sidebar {
+  border-right: 2px solid var(--ba-blue-light);
+  padding: 32px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-/* iOS 丝滑动画预设 */
-.animate-ios {
-  transition: all 0.5s var(--ios-ease);
-}
-
-.hover-lift:hover {
-  transform: translateY(-4px) scale(1.01);
-  box-shadow: 0 12px 40px rgba(0, 163, 255, 0.12);
-}
-
-.active-shrink:active {
-  transform: scale(0.96);
-}
-
-/* MomoTalk 消息泡泡 */
-.momo-bubble {
-  border-radius: 18px;
-  padding: 12px 16px;
-  max-width: 85%;
-  position: relative;
-  line-height: 1.5;
-  font-size: 15px;
-  animation: bubbleIn 0.4s var(--ios-ease) backwards;
-}
-
-.momo-bubble.left {
-  background: var(--ba-white);
-  border-bottom-left-radius: 4px;
-  color: var(--ba-text);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-}
-
-.momo-bubble.right {
-  background: var(--ba-blue);
-  border-bottom-right-radius: 4px;
-  color: white;
-  margin-left: auto;
-}
-
-@keyframes bubbleIn {
-  from { opacity: 0; transform: translateY(10px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* 按钮重构 */
-.ba-button {
-  height: 48px;
-  padding: 0 24px;
+.ba-nav-item {
+  height: 60px;
   border-radius: 14px;
-  border: none;
-  font-weight: 700;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 16px;
+  font-weight: 800;
+  color: var(--ba-text-soft);
+  transition: all 0.4s var(--ios-ease);
   cursor: pointer;
-  display: inline-flex;
+  position: relative;
+}
+
+.ba-nav-item::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 4px;
+  height: 0%;
+  background: var(--ba-blue);
+  border-radius: 0 4px 4px 0;
+  transition: height 0.3s var(--ios-ease);
+}
+
+.ba-nav-item.active {
+  background: var(--ba-blue-light);
+  color: var(--ba-blue);
+  transform: translateX(4px);
+}
+
+.ba-nav-item.active::after {
+  height: 60%;
+}
+
+.ba-nav-icon {
+  width: 32px;
+  height: 32px;
+  background: var(--ba-white);
+  border-radius: 10px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  transition: all 0.3s var(--ios-ease);
-  position: relative;
-  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 163, 255, 0.1);
+  font-size: 18px;
+}
+
+/* 碧蓝档案风格按钮：重感阴影 + 亮色边框 */
+.ba-button {
+  background: var(--ba-white);
+  border: 2px solid var(--ba-blue);
+  color: var(--ba-blue);
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s var(--ios-ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 4px 4px 0px var(--ba-blue-light);
+}
+
+.ba-button:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px var(--ba-blue);
+  background: var(--ba-blue);
+  color: white;
 }
 
 .ba-button-primary {
   background: var(--ba-blue);
   color: white;
-  box-shadow: 0 4px 14px rgba(0, 163, 255, 0.3);
+  border-color: var(--ba-blue-deep);
+  box-shadow: 4px 4px 0px var(--ba-blue-deep);
 }
 
 .ba-button-primary:hover {
   background: var(--ba-blue-deep);
-  box-shadow: 0 6px 20px rgba(0, 163, 255, 0.4);
+  box-shadow: 2px 2px 0px var(--ba-blue-deep);
 }
 
-/* MomoTalk Layout System */
-.ba-container {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  height: 100dvh;
-  width: 100vw;
-  overflow: hidden;
-  position: relative;
+/* 输入框重构 */
+input[type="text"], input[type="url"], textarea {
+  background: rgba(255, 255, 255, 0.6);
+  border: 2px solid var(--ba-border-color);
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-weight: 600;
+  transition: all 0.3s;
 }
 
-.ba-sidebar {
-  background: rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(10px);
-  border-right: 1px solid var(--ba-border);
-  display: flex;
-  flex-direction: column;
-  padding: 24px 16px;
-  z-index: 10;
+input:focus, textarea:focus {
+  border-color: var(--ba-blue);
+  background: white;
+  box-shadow: 0 0 0 4px var(--ba-blue-light);
 }
 
-.ba-sidebar-header {
-  margin-bottom: 32px;
-  padding: 0 8px;
-}
-
-.ba-logo-text {
-  font-size: 24px;
+/* 标题样式 */
+.ba-section-title {
+  font-size: 14px;
   font-weight: 900;
   color: var(--ba-blue);
-  letter-spacing: -0.04em;
-  font-style: italic;
-}
-
-.ba-nav-item {
-  height: 52px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 16px;
-  border-radius: 16px;
-  color: var(--ba-text-soft);
-  text-decoration: none;
-  font-weight: 600;
-  transition: all 0.4s var(--ios-ease);
-  cursor: pointer;
-  margin-bottom: 4px;
-}
-
-.ba-nav-item:hover {
-  background: rgba(0, 163, 255, 0.05);
-  color: var(--ba-blue);
-  transform: translateX(4px);
-}
-
-.ba-nav-item.active {
-  background: var(--ba-blue);
-  color: white;
-  box-shadow: 0 8px 16px rgba(0, 163, 255, 0.25);
-}
-
-.ba-main-content {
-  position: relative;
-  overflow-y: auto;
-  padding: 40px;
-  scroll-behavior: smooth;
-}
-
-/* iOS Card Style */
-.ba-card {
-  background: var(--ba-white);
-  border-radius: var(--radius-ios);
-  border: 1px solid var(--ba-border);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03);
-  padding: 24px;
-  transition: all 0.5s var(--ios-ease);
-}
-
-.ba-card:hover {
-  box-shadow: 0 12px 48px rgba(0, 163, 255, 0.1);
-  transform: translateY(-2px);
-}
-
-.ba-section-title {
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--ba-blue);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
 .ba-section-title::before {
   content: "";
-  width: 4px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   background: var(--ba-blue);
-  border-radius: 2px;
+  clip-path: polygon(20% 0%, 0% 20%, 30% 50%, 0% 80%, 20% 100%, 50% 70%, 80% 100%, 100% 80%, 70% 50%, 100% 20%, 80% 0%, 50% 30%);
 }
 
-/* 响应式适配 */
-@media (max-width: 1024px) {
-  .ba-container {
-    grid-template-columns: 80px 1fr;
-  }
-  .ba-nav-text {
-    display: none;
-  }
+/* 动画：入场弹簧 */
+@keyframes ba-pop-in {
+  0% { opacity: 0; transform: scale(0.9) translateY(20px); }
+  70% { transform: scale(1.02) translateY(-5px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-@media (max-width: 768px) {
-  .ba-container {
-    grid-template-columns: 1fr;
-  }
-  .ba-sidebar {
-    display: none; /* 移动端后续增加抽屉式导航 */
-  }
+.animate-ba {
+  animation: ba-pop-in 0.6s var(--ios-ease) both;
 }
+
+/* 多级 Stagger */
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
 
 /* ===== BA Style Polyfill for Old Components ===== */
 
