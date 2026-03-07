@@ -70,73 +70,105 @@ export function WorkBoard({
 
   return (
     <section
-      className={`${pageMode ? "workboard workboard-page" : `panel workboard ${compact ? "compact" : ""}`} ${showTimeline ? "" : "no-timeline"}`.trim()}
+      className={`animate-ios ${pageMode ? "workboard-page" : "ba-card"}`}
+      style={{ padding: pageMode ? "0" : "24px" }}
     >
-      {showTimeline && !compact ? (
-        <div className="timeline">
-          {stages.map((item, i) => {
-            const done = i <= activeIndex;
-            return (
-              <div key={item.key} className={`node ${done ? "done" : ""}`}>
-                <button className="node-dot" />
-                <div className="node-meta">
-                  <strong>{item.title}</strong>
-                  <span>{item.desc}</span>
-                </div>
-              </div>
-            );
-          })}
-          <div className="timeline-bar">
-            <div className="timeline-fill" style={{ width: `${(activeIndex / (stages.length - 1)) * 100}%` }} />
-          </div>
-        </div>
-      ) : null}
-
-      <div className={`workboard-headbar ${switchAlign === "right" ? "switch-right" : ""}`}>
-        <div className="workboard-head-left">{topLeft}</div>
-        {compact && switchAlign !== "right" ? <h4 className="workboard-head-title">阅读面板</h4> : null}
+      <div className={`workboard-headbar ${switchAlign === "right" ? "switch-right" : ""}`} style={{ marginBottom: "20px" }}>
+        <div className="workboard-head-left">{topLeft || <h3 className="ba-section-title" style={{ margin: 0 }}>任务看板</h3>}</div>
         <div className="workboard-head-right">
-          <div className="pane-switch">
-            <button className={pane === "raw" ? "on" : ""} onClick={() => setPane("raw")}>原文</button>
-            <button className={pane === "summary" ? "on" : ""} onClick={() => setPane("summary")}>摘要</button>
-            <button className={pane === "snapshots" ? "on" : ""} onClick={() => setPane("snapshots")}>快照</button>
+          <div className="ba-glass" style={{ display: "inline-flex", padding: "4px", borderRadius: "14px", gap: "4px" }}>
+            <button 
+              className="ba-button" 
+              style={{ height: "32px", padding: "0 16px", fontSize: "13px", borderRadius: "10px", background: pane === "raw" ? "var(--ba-blue)" : "transparent", color: pane === "raw" ? "white" : "var(--ba-text-soft)" }}
+              onClick={() => setPane("raw")}
+            >
+              原文
+            </button>
+            <button 
+              className="ba-button" 
+              style={{ height: "32px", padding: "0 16px", fontSize: "13px", borderRadius: "10px", background: pane === "summary" ? "var(--ba-blue)" : "transparent", color: pane === "summary" ? "white" : "var(--ba-text-soft)" }}
+              onClick={() => setPane("summary")}
+            >
+              摘要
+            </button>
+            <button 
+              className="ba-button" 
+              style={{ height: "32px", padding: "0 16px", fontSize: "13px", borderRadius: "10px", background: pane === "snapshots" ? "var(--ba-blue)" : "transparent", color: pane === "snapshots" ? "white" : "var(--ba-text-soft)" }}
+              onClick={() => setPane("snapshots")}
+            >
+              快照
+            </button>
           </div>
         </div>
       </div>
 
-      <article className="lane lane-single active">
+      {showTimeline && !compact && (
+        <div className="timeline ba-glass animate-ios" style={{ padding: "20px", borderRadius: "18px", marginBottom: "24px" }}>
+          {stages.map((item, i) => {
+            const done = i <= activeIndex;
+            return (
+              <div key={item.key} className={`node ${done ? "done" : ""}`}>
+                <div 
+                  className="animate-ios"
+                  style={{ 
+                    width: "12px", height: "12px", borderRadius: "50%", 
+                    background: done ? "var(--ba-blue)" : "var(--ba-border)",
+                    boxShadow: done ? "0 0 12px var(--ba-blue)" : "none"
+                  }} 
+                />
+                <div className="node-meta" style={{ marginTop: "8px" }}>
+                  <strong style={{ fontSize: "12px", color: done ? "var(--ba-blue)" : "var(--ba-text-soft)" }}>{item.title}</strong>
+                </div>
+              </div>
+            );
+          })}
+          <div className="timeline-bar" style={{ background: "var(--ba-border)", top: "25px" }}>
+            <div className="timeline-fill" style={{ width: `${(activeIndex / (stages.length - 1)) * 100}%`, background: "var(--ba-blue)" }} />
+          </div>
+        </div>
+      )}
+
+      <article className="animate-ios" style={{ minHeight: "400px" }}>
         {pane === "raw" ? (
-          <>
-            {job?.transcriptText ? <pre>{job.transcriptText}</pre> : <p className="muted">暂无原文</p>}
-          </>
+          <div className="ba-glass" style={{ padding: "20px", borderRadius: "18px", fontSize: "14px", lineHeight: "1.8", whiteSpace: "pre-wrap", color: "var(--ba-text)" }}>
+            {job?.transcriptText ? job.transcriptText : <p className="muted">暂无原文数据</p>}
+          </div>
         ) : null}
 
         {pane === "summary" ? (
-          <>
+          <div className="markdown-body ba-glass animate-ios" style={{ padding: "24px", borderRadius: "18px" }}>
             {summaryTextOnly ? (
-              <div className="markdown-body">
-                <ReactMarkdown rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}>{summaryTextOnly}</ReactMarkdown>
-              </div>
+              <ReactMarkdown rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}>
+                {summaryTextOnly}
+              </ReactMarkdown>
             ) : (
-              <p className="muted">暂无摘要</p>
+              <p className="muted">正在同步 SCHALE 总结报告...</p>
             )}
-          </>
+          </div>
         ) : null}
 
         {pane === "snapshots" ? (
-          <>
-            <div className="snap-grid">
-              {job?.snapshots?.length ? (
-                job.snapshots.map((src) => <img key={src} src={src} alt="snapshot" loading="lazy" />)
-              ) : (
-                <p className="muted">暂无快照</p>
-              )}
-            </div>
-          </>
+          <div className="snap-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "16px" }}>
+            {job?.snapshots?.length ? (
+              job.snapshots.map((src) => (
+                <img 
+                  key={src} src={src} alt="snapshot" 
+                  className="animate-ios hover-lift"
+                  style={{ width: "100%", borderRadius: "14px", border: "1px solid var(--ba-border)" }} 
+                />
+              ))
+            ) : (
+              <p className="muted">暂无视频快照</p>
+            )}
+          </div>
         ) : null}
       </article>
 
-      {job?.error ? <p className="error-text">任务失败：{job.error}</p> : null}
+      {job?.error ? (
+        <div className="ba-glass" style={{ marginTop: "20px", padding: "16px", borderRadius: "14px", border: "1px solid var(--ba-pink)", color: "var(--ba-pink)" }}>
+          任务异常：{job.error}
+        </div>
+      ) : null}
     </section>
   );
 }
