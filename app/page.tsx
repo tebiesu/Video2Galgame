@@ -293,8 +293,8 @@ function SettingsModal({
 
         <div className="settings-content">
           <div className="settings-top">
-            <span className="muted">设置中心</span>
-            <button className="ghost-btn" onClick={onClose}>
+            <span className="muted" style={{ fontWeight: "bold", color: "var(--ba-blue)" }}>系统设置中心</span>
+            <button className="ba-button" style={{ height: "36px", padding: "0 16px", fontSize: "13px", background: "var(--ba-bg)" }} onClick={onClose}>
               关闭
             </button>
           </div>
@@ -312,11 +312,11 @@ function SettingsModal({
                   <span>API Key</span>
                   <div className="input-with-action">
                     <input type={showProviderKey ? "text" : "password"} value={provider.apiKey} onChange={(e) => onChange({ ...settings, provider: { ...provider, apiKey: e.target.value } })} placeholder="sk-..." />
-                    <button type="button" className="ghost-btn mini" onClick={() => setShowProviderKey((x) => !x)}>{showProviderKey ? "隐藏" : "显示"}</button>
+                    <button type="button" className="ba-button" style={{ height: "36px", padding: "0 12px", fontSize: "12px" }} onClick={() => setShowProviderKey((x) => !x)}>{showProviderKey ? "隐藏" : "显示"}</button>
                   </div>
                 </label>
                 <label>
-                  <span>Model</span>
+                  <span style={{ fontSize: "12px", color: "var(--ba-text-soft)", marginBottom: "4px", display: "block" }}>Model</span>
                   {modelOptions.length ? (
                     <FancySelect
                       value={provider.model}
@@ -325,12 +325,13 @@ function SettingsModal({
                     />
                   ) : (
                     <input
+                      style={{ height: "40px", borderRadius: "10px", border: "1px solid var(--ba-border)", padding: "0 12px", fontSize: "14px", width: "100%" }}
                       value={provider.model}
                       onChange={(e) => onChange({ ...settings, provider: { ...provider, model: e.target.value } })}
                       placeholder="gpt-4o-mini"
                     />
                   )}
-                  <small className="muted">
+                  <small className="muted" style={{ marginTop: "4px", display: "block" }}>
                     {modelOptions.length
                       ? "已加载模型列表，可直接下拉选择"
                       : "先点“一键诊断连通性”以拉取模型列表"}
@@ -338,16 +339,16 @@ function SettingsModal({
                 </label>
                 <div className="split">
                   <label>
-                    <span>Temperature</span>
-                    <input type="number" min={0} max={2} step={0.1} value={provider.temperature ?? 0.4} onChange={(e) => onChange({ ...settings, provider: { ...provider, temperature: Number(e.target.value) } })} />
+                    <span style={{ fontSize: "12px", color: "var(--ba-text-soft)", marginBottom: "4px", display: "block" }}>Temperature</span>
+                    <input style={{ height: "40px", borderRadius: "10px", border: "1px solid var(--ba-border)", padding: "0 12px", fontSize: "14px", width: "100%" }} type="number" min={0} max={2} step={0.1} value={provider.temperature ?? 0.4} onChange={(e) => onChange({ ...settings, provider: { ...provider, temperature: Number(e.target.value) } })} />
                   </label>
                   <label>
-                    <span>Max Tokens</span>
-                    <input type="number" min={100} max={10000} step={100} value={provider.maxTokens ?? 2200} onChange={(e) => onChange({ ...settings, provider: { ...provider, maxTokens: Number(e.target.value) } })} />
+                    <span style={{ fontSize: "12px", color: "var(--ba-text-soft)", marginBottom: "4px", display: "block" }}>Max Tokens</span>
+                    <input style={{ height: "40px", borderRadius: "10px", border: "1px solid var(--ba-border)", padding: "0 12px", fontSize: "14px", width: "100%" }} type="number" min={100} max={10000} step={100} value={provider.maxTokens ?? 2200} onChange={(e) => onChange({ ...settings, provider: { ...provider, maxTokens: Number(e.target.value) } })} />
                   </label>
                 </div>
-                  <div className="settings-actions">
-                    <button className="ghost-btn" onClick={() => void onRunCheck(settings.provider)} disabled={checking}>{checking ? "诊断中..." : "一键诊断连通性"}</button>
+                  <div className="settings-actions" style={{ marginTop: "16px" }}>
+                    <button className="ba-button" style={{ background: "var(--ba-bg)", height: "40px", fontSize: "13px" }} onClick={() => void onRunCheck(settings.provider)} disabled={checking}>{checking ? "诊断中..." : "一键诊断连通性"}</button>
                   </div>
                 </div>
 
@@ -1568,7 +1569,7 @@ export default function HomePage(): React.ReactNode {
             {startView === "waiting" ? (
               <div className="ba-card">
                 <div className="waiting-panel" style={{ minHeight: "400px" }}>
-                  <h2 className="panel-title">解析中...</h2>
+                  <h2 className="ba-section-title">解析中...</h2>
                   <div className="waiting-progress" style={{ width: "100%" }}>
                     <div className="waiting-progress-bar" style={{ width: `${stageProgress}%` }} />
                   </div>
@@ -1662,9 +1663,165 @@ export default function HomePage(): React.ReactNode {
           <div className="animate-ios" style={{ maxWidth: "1200px", margin: "0 auto" }}>
             <div className="ba-section-title">角色工坊</div>
             <div className="ba-card">
-               {/* 简化版工坊 logic */}
-               <p className="muted">工坊功能正在适配 MomoTalk 风格，请通过设置面板进行深度配置。</p>
+              {workshopView === "list" ? (
+                <>
+                  <p className="muted" style={{ marginBottom: "20px" }}>配置立绘差分、背景图与背景音乐，打包为独立角色卡。</p>
+                  <section className="role-card-grid">
+                    {rolePacks.map((pack) => {
+                      const thumb = pack.thumbnail || "";
+                      return (
+                        <button
+                          key={pack.id}
+                          className={`role-card-item ${activeRolePackId === pack.id ? "active" : ""}`}
+                          onClick={() => {
+                            setActiveRolePackId(pack.id);
+                            setWorkshopView("detail");
+                          }}
+                        >
+                          <div className="role-card-thumb">
+                            {thumb ? <img src={thumb} alt={`${pack.name} 缩略图`} /> : <span>{pack.characterName.slice(0, 1) || "角"}</span>}
+                          </div>
+                          <h3>{pack.name}</h3>
+                          <p>{pack.characterName}</p>
+                        </button>
+                      );
+                    })}
+                  </section>
+                </>
+              ) : null}
+
+              {workshopView === "detail" && activeRolePack ? (
+                <section className="role-editor-panel">
+                  <div style={{ display: "flex", gap: "10px", marginBottom: "12px" }}>
+                    <button className="ba-button" style={{ height: "36px", padding: "0 16px", fontSize: "13px" }} onClick={() => setWorkshopView("list")}>← 返回列表</button>
+                  </div>
+                  
+                  <div className="split">
+                    <label className="field">
+                      <span>角色包名</span>
+                      <input type="text" value={activeRolePack.name} onChange={(e) => updateRolePack({ name: e.target.value })} />
+                    </label>
+                    <label className="field">
+                      <span>角色名</span>
+                      <input type="text" value={activeRolePack.characterName} onChange={(e) => updateRolePack({ characterName: e.target.value })} />
+                    </label>
+                  </div>
+                  
+                  <label className="field">
+                    <span>角色风格提示词</span>
+                    <textarea rows={3} value={activeRolePack.stylePrompt} onChange={(e) => updateRolePack({ stylePrompt: e.target.value })} />
+                  </label>
+                  
+                  <div className="split">
+                    <label className="field">
+                      <span>推荐音色</span>
+                      <FancySelect
+                        value={activeRolePack.recommendedVoice}
+                        onChange={(v) => updateRolePack({ recommendedVoice: v })}
+                        options={OFFICIAL_TTS_VOICES}
+                      />
+                    </label>
+                    <label className="field">
+                      <span>背景主题</span>
+                      <FancySelect
+                        value={activeRolePack.backgroundTheme}
+                        onChange={(v) => updateRolePack({ backgroundTheme: v })}
+                        options={[
+                          { value: "sunset", label: "日落粉蓝" },
+                          { value: "default", label: "柔光白粉" }
+                        ]}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="ba-glass" style={{ padding: "20px", borderRadius: "16px", border: "1px solid var(--ba-border)" }}>
+                    <h3 className="minor-title">背景区（图 + BGM）</h3>
+                    <div className="split">
+                      <UploadPreviewField
+                        label="角色卡缩略图"
+                        value={activeRolePack.thumbnail}
+                        onPick={async (f) => await setRolePackThumbnail(f)}
+                        onClear={() => void setRolePackThumbnail(null)}
+                      />
+                      <UploadPreviewField
+                        label="自定义背景图"
+                        value={sharedAppearance.backgroundImage}
+                        onPick={async (f) => await setSharedBackground(f)}
+                        onClear={() => void setSharedBackground(null)}
+                      />
+                    </div>
+                    <div className="field" style={{ marginTop: "16px" }}>
+                      <span className="field-title-row">
+                        <span>背景音乐</span>
+                        <small className={`upload-state ${sharedAppearance.backgroundMusic ? "ok" : ""}`}>{sharedAppearance.backgroundMusic ? "已配置" : "未配置"}</small>
+                      </span>
+                      {sharedAppearance.backgroundMusic ? (
+                        <div className="audio-upload-wrap">
+                          <audio className="audio-preview" controls src={sharedAppearance.backgroundMusic} />
+                          <button type="button" className="preview-clear-btn" onClick={() => void setSharedBackgroundMusic(null)}>×</button>
+                        </div>
+                      ) : (
+                        <label className="upload-shell" htmlFor="role-workshop-bgm-upload">
+                          <strong>选择音频</strong>
+                          <small>点击上传背景音乐</small>
+                        </label>
+                      )}
+                      <input
+                        id="role-workshop-bgm-upload"
+                        className="upload-native"
+                        type="file"
+                        accept="audio/*"
+                        onChange={async (e) => {
+                          const inputEl = e.currentTarget;
+                          const f = e.target.files?.[0];
+                          if (!f) return;
+                          await setSharedBackgroundMusic(f);
+                          if (inputEl) inputEl.value = "";
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="ba-glass" style={{ padding: "20px", borderRadius: "16px", border: "1px solid var(--ba-border)" }}>
+                    <h3 className="minor-title">立绘区（含差分）</h3>
+                    <div className="split">
+                      <UploadPreviewField label="立绘 neutral" value={sharedAppearance.sprites?.neutral} onPick={async (f) => await setSharedSprite("neutral", f)} onClear={() => void setSharedSprite("neutral", null)} />
+                      <UploadPreviewField label="立绘 happy" value={sharedAppearance.sprites?.happy} onPick={async (f) => await setSharedSprite("happy", f)} onClear={() => void setSharedSprite("happy", null)} />
+                    </div>
+                    <div className="split" style={{ marginTop: "16px" }}>
+                      <UploadPreviewField label="立绘 serious" value={sharedAppearance.sprites?.serious} onPick={async (f) => await setSharedSprite("serious", f)} onClear={() => void setSharedSprite("serious", null)} />
+                      <UploadPreviewField label="立绘 sad" value={sharedAppearance.sprites?.sad} onPick={async (f) => await setSharedSprite("sad", f)} onClear={() => void setSharedSprite("sad", null)} />
+                    </div>
+                    <div style={{ marginTop: "16px", maxWidth: "50%" }}>
+                      <UploadPreviewField label="立绘 angry" value={sharedAppearance.sprites?.angry} onPick={async (f) => await setSharedSprite("angry", f)} onClear={() => void setSharedSprite("angry", null)} />
+                    </div>
+                  </div>
+
+                  <div className="settings-actions">
+                    <button className="ba-button role-save-btn active-shrink" onClick={persistRolePack} style={{ color: "white" }}>保存角色包</button>
+                    <button className="ba-button ba-button-primary active-shrink" onClick={() => applyRolePack(activeRolePack)}>应用此角色包</button>
+                    <button className="ba-button" style={{ background: "var(--ba-bg)", border: "1px solid var(--ba-border)" }} onClick={openSettings}>统一配置面板</button>
+                  </div>
+                </section>
+              ) : null}
             </div>
+            
+            {workshopView === "list" && (
+              <div className="role-workshop-grid">
+                <article className="role-pack-card">
+                  <h3>角色包结构</h3>
+                  <p>角色名 + 风格词 + neutral/happy/serious/sad/angry 立绘差分 + 背景图 + 背景音乐。</p>
+                </article>
+                <article className="role-pack-card">
+                  <h3>历史隔离策略</h3>
+                  <p>历史任务固化角色信息，后续切换角色不会影响旧任务回放。</p>
+                </article>
+                <article className="role-pack-card">
+                  <h3>语音与立绘联动</h3>
+                  <p>同一角色包可绑定官方预设音色或自定义 voice uri。</p>
+                </article>
+              </div>
+            )}
           </div>
         )}
       </section>

@@ -12,8 +12,8 @@ interface Props {
 
 export function MarkdownResult({ job }: Props): React.ReactNode {
   return (
-    <section className="panel result-panel">
-      <h2 className="panel-title">输出结果</h2>
+    <section className="ba-card result-panel">
+      <h2 className="ba-section-title">输出结果</h2>
       {!job && <p className="muted">提交任务后会在这里展示 Markdown 结果。</p>}
       {job?.summaryMarkdown ? (
         <article className="markdown-body">

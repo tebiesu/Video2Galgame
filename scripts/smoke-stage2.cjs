@@ -5,7 +5,7 @@ const { chromium } = require("playwright");
   const page = await browser.newPage();
   try {
     await page.goto("http://127.0.0.1:3007", { waitUntil: "domcontentloaded" });
-    await page.waitForSelector(".landing-home", { timeout: 20000 });
+    await page.waitForSelector(".ba-main-content", { timeout: 20000 });
 
     const platformTrigger = page.locator("form .fancy-trigger").first();
     await platformTrigger.click();
@@ -14,16 +14,16 @@ const { chromium } = require("playwright");
     await page.waitForTimeout(150);
     const menuLeft = await page.locator(".fancy-menu").count();
 
-    await page.locator(".top-nav button", { hasText: "设置" }).click();
+    await page.locator(".ba-nav-item", { hasText: "系统设置" }).click();
     await page.waitForSelector(".settings-modal", { timeout: 8000 });
     await page.locator(".settings-nav button", { hasText: "硅基流动 TTS" }).click();
-    await page.locator(".settings-card .ghost-btn", { hasText: "测试语音效果" }).click();
+    await page.locator(".settings-card button", { hasText: "测试语音效果" }).click();
     await page.waitForSelector(".settings-card .health-card", { timeout: 15000 });
     const ttsText = await page.locator(".settings-card .health-card").first().innerText();
 
-    await page.locator(".settings-top .ghost-btn", { hasText: "关闭" }).click();
+    await page.locator(".settings-top button", { hasText: "关闭" }).click();
     await page.waitForSelector(".settings-modal", { state: "hidden", timeout: 8000 });
-    await page.locator(".top-nav button", { hasText: "工作台" }).click();
+    await page.locator(".ba-nav-item", { hasText: "工作台" }).click();
 
     const bgmTrigger = page.locator(".galgame-panel .fancy-trigger").first();
     await bgmTrigger.click();

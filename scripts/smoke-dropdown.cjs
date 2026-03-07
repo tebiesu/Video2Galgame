@@ -10,7 +10,7 @@
   await p.click(".fancy-option:nth-child(2)");
   const menuCount = await p.locator(".fancy-menu").count();
 
-  await p.click("text=设置");
+  await p.click("text=系统设置");
   await p.waitForSelector(".settings-modal");
   await p.click("text=GalGame 参数");
   await p.click("text=关闭");

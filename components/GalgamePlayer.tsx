@@ -316,7 +316,7 @@ export function GalgamePlayer({ summary, settings, pageMode = false, speaker, ro
   }
 
   return (
-    <section className={pageMode ? "galgame-page" : "panel galgame-panel hover-float kawaii-panel"}>
+    <section className={pageMode ? "galgame-page animate-ios" : "galgame-panel animate-ios"}>
       {!pageMode ? (
         <header className="galgame-head">
           <h3>GalGame 播放模式</h3>
@@ -325,11 +325,11 @@ export function GalgamePlayer({ summary, settings, pageMode = false, speaker, ro
               <i />
               {voiceBusy ? "语音生成中" : playVoice ? "自动语音开启" : "自动语音关闭"}
             </span>
-            <button className="ghost-btn" onClick={() => setPlayVoice((x) => !x)}>
-              {playVoice ? "关闭语音" : "开启语音"}
+            <button className="ba-button ba-glass" style={{ height: "36px", padding: "0 12px", fontSize: "12px", borderRadius: "10px", color: "var(--ba-text)" }} onClick={() => setPlayVoice((x) => !x)}>
+              朗读：{playVoice ? "开" : "关"}
             </button>
-            <button className="ghost-btn" onClick={() => void playLineVoice()} disabled={voiceBusy}>
-              {voiceBusy ? "朗读中..." : "重读本句"}
+            <button className="ba-button ba-glass" style={{ height: "36px", padding: "0 12px", fontSize: "12px", borderRadius: "10px", color: "var(--ba-blue)" }} onClick={() => void playLineVoice()} disabled={voiceBusy}>
+              {voiceBusy ? "加载中..." : "重播"}
             </button>
           </div>
         </header>
@@ -343,11 +343,11 @@ export function GalgamePlayer({ summary, settings, pageMode = false, speaker, ro
               <i />
               {voiceBusy ? "语音生成中" : playVoice ? "自动语音开启" : "自动语音关闭"}
             </span>
-            <button className="ghost-btn" onClick={() => setPlayVoice((x) => !x)}>
-              {playVoice ? "关闭语音" : "开启语音"}
+            <button className="ba-button ba-glass" style={{ height: "36px", padding: "0 12px", fontSize: "12px", borderRadius: "10px", color: "var(--ba-text)" }} onClick={() => setPlayVoice((x) => !x)}>
+              朗读：{playVoice ? "开" : "关"}
             </button>
-            <button className="ghost-btn" onClick={() => void playLineVoice()} disabled={voiceBusy}>
-              {voiceBusy ? "朗读中..." : "重读本句"}
+            <button className="ba-button ba-glass" style={{ height: "36px", padding: "0 12px", fontSize: "12px", borderRadius: "10px", color: "var(--ba-blue)" }} onClick={() => void playLineVoice()} disabled={voiceBusy}>
+              {voiceBusy ? "加载中..." : "重播"}
             </button>
             <button className="ghost-btn" onClick={() => setConfigOpen((x) => !x)}>{configOpen ? "关闭配置" : "打开配置"}</button>
           </div>
