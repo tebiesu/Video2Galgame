@@ -145,27 +145,162 @@ function toPublicSnapshotUrl(src: string): string {
   return src;
 }
 
-async function callAdapter(input: JobInput): Promise<AdapterResponse> {
-  const endpoint = input.platform === "youtube" ? "/parse/youtube" : "/parse/bilibili";
-  const signal = AbortSignal.timeout(240_000);
-  const res = await fetch(`${getAdapterBaseUrl()}${endpoint}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    signal,
-    body: JSON.stringify({
-      url: input.url,
-      lang: input.parseOptions.lang,
-      comment_num: input.parseOptions.commentNum ?? 0,
-      danmaku_num: input.parseOptions.danmakuNum ?? 0,
-      snapshots: input.parseOptions.snapshots ?? "",
-      need_subs: input.parseOptions.needSubs ?? true,
-      need_pbp: input.parseOptions.needPbp ?? true
-    })
-  });
-  if (!res.ok) {
-    throw new Error(`解析服务失败: HTTP ${res.status}, ${await res.text()}`);
+function clampNumber(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, Math.trunc(value)));
+}
+
+function normalizeSnapshotPoints(raw?: string): string {
+  if (!raw) return "";
+  const nums = String(raw)
+    .split(",")
+    .map((x) => Number(x.trim()))
+    .filter((x) => Number.isFinite(x) && x >= 0)
+    .map((x) => Math.trunc(x));
+  if (!nums.length) return "";
+  return [...new Set(nums)].slice(0, 24).join(",");
+}
+
+function extractYoutubeVideoId(raw: string): string | undefined {
+  try {
+    const u = new URL(raw);
+    const host = u.hostname.toLowerCase();
+    if (host.includes("youtu.be")) {
+      const id = u.pathname.replace(/^\/+/, "").split("/")[0];
+      return id || undefined;
+    }
+    if (host.includes("youtube.com")) {
+      if (u.pathname === "/watch") return u.searchParams.get("v") || undefined;
+      if (u.pathname.startsWith("/shorts/") || u.pathname.startsWith("/embed/")) {
+        return u.pathname.split("/")[2] || undefined;
+      }
+    }
+  } catch {
+    // noop
   }
-  return (await res.json()) as AdapterResponse;
+  return undefined;
+}
+
+async function resolveBilibiliUrl(raw: string): Promise<string> {
+  try {
+    const u = new URL(raw);
+    if (!u.hostname.toLowerCase().includes("b23.tv")) return raw;
+    const res = await fetch(raw, {
+      method: "GET",
+      redirect: "follow",
+      signal: AbortSignal.timeout(8_000)
+    });
+    return res.url || raw;
+  } catch {
+    return raw;
+  }
+}
+
+function extractBilibiliBv(raw: string): string | undefined {
+  const m = raw.match(/BV([0-9A-Za-z]{10})/);
+  return m ? `BV${m[1]}` : undefined;
+}
+
+function pickBilibiliPage(raw: string): string | undefined {
+  try {
+    const u = new URL(raw);
+    const p = u.searchParams.get("p");
+    if (!p) return undefined;
+    const n = Number(p);
+    if (!Number.isFinite(n) || n < 1) return undefined;
+    return String(Math.trunc(n));
+  } catch {
+    return undefined;
+  }
+}
+
+async function normalizeInputForAdapter(input: JobInput): Promise<JobInput> {
+  const next: JobInput = JSON.parse(JSON.stringify(input)) as JobInput;
+  next.url = next.url.trim();
+  next.parseOptions = {
+    ...next.parseOptions,
+    commentNum: clampNumber(next.parseOptions.commentNum ?? 0, 0, 200),
+    danmakuNum: clampNumber(next.parseOptions.danmakuNum ?? 0, 0, 200),
+    snapshots: normalizeSnapshotPoints(next.parseOptions.snapshots),
+    needSubs: next.parseOptions.needSubs ?? true,
+    needPbp: next.parseOptions.needPbp ?? true
+  };
+
+  if (next.platform === "youtube") {
+    const vid = extractYoutubeVideoId(next.url);
+    if (vid) next.url = `https://www.youtube.com/watch?v=${vid}`;
+    return next;
+  }
+
+  const resolved = await resolveBilibiliUrl(next.url);
+  const bv = extractBilibiliBv(resolved) || extractBilibiliBv(next.url);
+  if (bv) {
+    const p = pickBilibiliPage(resolved) || pickBilibiliPage(next.url);
+    next.url = p ? `https://www.bilibili.com/video/${bv}?p=${p}` : `https://www.bilibili.com/video/${bv}`;
+  } else {
+    next.url = resolved;
+  }
+  return next;
+}
+
+function shouldRetryHttp(status: number): boolean {
+  return status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
+}
+
+async function callAdapter(input: JobInput): Promise<AdapterResponse> {
+  const normalized = await normalizeInputForAdapter(input);
+  const endpoint = input.platform === "youtube" ? "/parse/youtube" : "/parse/bilibili";
+  const target = `${getAdapterBaseUrl()}${endpoint}`;
+  let lastError = "";
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const signal = AbortSignal.timeout(160_000);
+      const res = await fetch(target, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal,
+        body: JSON.stringify({
+          url: normalized.url,
+          lang: normalized.parseOptions.lang,
+          comment_num: normalized.parseOptions.commentNum ?? 0,
+          danmaku_num: normalized.parseOptions.danmakuNum ?? 0,
+          snapshots: normalized.parseOptions.snapshots ?? "",
+          need_subs: normalized.parseOptions.needSubs ?? true,
+          need_pbp: normalized.parseOptions.needPbp ?? true
+        })
+      });
+      if (!res.ok) {
+        const text = (await res.text()).slice(0, 500);
+        lastError = `HTTP ${res.status}: ${text || "empty"}`;
+        if (attempt < 3 && shouldRetryHttp(res.status)) {
+          await new Promise((r) => setTimeout(r, 500 * attempt));
+          continue;
+        }
+        break;
+      }
+      const payload = (await res.json()) as Partial<AdapterResponse>;
+      return {
+        ok: payload.ok ?? true,
+        platform: (payload.platform as AdapterResponse["platform"]) || normalized.platform,
+        metadata: payload.metadata || {},
+        transcriptText: payload.transcriptText || "",
+        rawText: payload.rawText || "",
+        snapshotHtmlTags: payload.snapshotHtmlTags || [],
+        warnings: payload.warnings || []
+      };
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+      if (attempt < 3) {
+        await new Promise((r) => setTimeout(r, 500 * attempt));
+        continue;
+      }
+      break;
+    }
+  }
+  throw new Error(
+    `解析服务失败（${normalized.platform}）: ${lastError || "unknown"}；已自动重试 3 次；URL=${normalized.url}`
+  );
 }
 
 function buildFallbackSummary(transcriptText: string, rawParseText: string): string {

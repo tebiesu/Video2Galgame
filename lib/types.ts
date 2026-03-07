@@ -22,6 +22,7 @@ export interface JobInput {
   url: string;
   templateId: string;
   summaryMode?: "template" | "role";
+  roleId?: string;
   roleName?: string;
   customSystemPrompt: string;
   modelConfig: ModelConfig;

@@ -5,7 +5,7 @@ import { HistoryPanel } from "@/components/HistoryPanel";
 import { InputPanel } from "@/components/InputPanel";
 import { WorkBoard } from "@/components/WorkBoard";
 import { FancySelect } from "@/components/FancySelect";
-import { isQuotaExceeded, toDataUrl, toOptimizedImageDataUrl } from "@/lib/clientUtils";
+import { isQuotaExceeded, toDataUrl, toOptimizedImageDataUrl, toOptimizedSpriteDataUrl } from "@/lib/clientUtils";
 import { readMedia, removeMedia, replaceMedia } from "@/lib/mediaStore";
 import { defaultSettings, normalizeSettings, SETTINGS_STORAGE_KEY, type AppSettings, type TtsConfig } from "@/lib/settings";
 import { TEMPLATES } from "@/lib/templates";
@@ -734,6 +734,7 @@ export default function HomePage(): React.ReactNode {
   }
 
   async function saveSharedAppearance(next: SharedAppearance, roleId = activeRolePackId): Promise<void> {
+    const targetRoleId = roleId || "custom";
     const normalized: SharedAppearance = {
       backgroundImage: next.backgroundImage || "",
       backgroundImageRef: next.backgroundImageRef || "",
@@ -743,10 +744,12 @@ export default function HomePage(): React.ReactNode {
       sprites: { ...(next.sprites || {}) },
       spriteRefs: { ...(next.spriteRefs || {}) }
     };
-    setSharedAppearance(normalized);
+    if (targetRoleId === activeRolePackId) {
+      setSharedAppearance(normalized);
+    }
     try {
       localStorage.setItem(
-        roleAppearanceStorageKey(roleId || "custom"),
+        roleAppearanceStorageKey(targetRoleId),
         JSON.stringify({
           backgroundImageRef: normalized.backgroundImageRef || "",
           backgroundMusicRef: normalized.backgroundMusicRef || "",
@@ -761,7 +764,7 @@ export default function HomePage(): React.ReactNode {
       }
       throw err;
     }
-    if ((settings.vn.presetId || "custom") === (roleId || "custom")) {
+    if ((settings.vn.presetId || "custom") === targetRoleId) {
       const nextSettings: AppSettings = {
         ...settings,
         vn: {
@@ -846,12 +849,13 @@ export default function HomePage(): React.ReactNode {
     const mergedPrompt = rolePrompt
       ? [rolePrompt, input.customSystemPrompt || ""].filter(Boolean).join("\n")
       : input.customSystemPrompt;
+    const roleId = summaryMode === "role" ? (settings.vn.presetId || activeRolePackId || "custom") : "";
     const roleName = summaryMode === "role" ? settings.vn.characterName.trim() || "解析助手" : "解析助手";
 
     const res = await fetch("/api/jobs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...input, summaryMode, roleName, customSystemPrompt: mergedPrompt })
+      body: JSON.stringify({ ...input, summaryMode, roleId, roleName, customSystemPrompt: mergedPrompt })
     });
 
     if (!res.ok) {
@@ -1048,7 +1052,7 @@ export default function HomePage(): React.ReactNode {
         });
         return;
       }
-      const data = await toOptimizedImageDataUrl(file, 1280, 0.8);
+      const data = await toOptimizedSpriteDataUrl(file, 900, 1400, 0.82);
       const ref = await replaceMedia(prevRef, data, "image", `sprite-${kind}`);
       void saveSharedAppearance({
         ...sharedAppearance,
@@ -1117,29 +1121,103 @@ export default function HomePage(): React.ReactNode {
 
   function applyRolePack(pack: RolePack): void {
     setActiveRolePackId(pack.id);
-    const nextSettings: AppSettings = {
-      ...settings,
-      tts: {
-        ...settings.tts,
-        voice: pack.recommendedVoice || settings.tts.voice
-      },
-      vn: {
-        ...settings.vn,
-        presetId: pack.id,
-        characterName: pack.characterName,
-        stylePrompt: pack.stylePrompt,
-        defaultBackground: pack.backgroundTheme || settings.vn.defaultBackground,
-        backgroundImage: sharedAppearance.backgroundImage || "",
-        backgroundMusic: sharedAppearance.backgroundMusic || "",
-        backgroundMusicName: sharedAppearance.backgroundMusicName || "",
-        sprites: { ...(sharedAppearance.sprites || {}) }
-      }
+    void (async () => {
+      const appearance = await loadAppearanceByRoleId(pack.id);
+      const nextSettings: AppSettings = {
+        ...settings,
+        tts: {
+          ...settings.tts,
+          voice: pack.recommendedVoice || settings.tts.voice
+        },
+        vn: {
+          ...settings.vn,
+          presetId: pack.id,
+          characterName: pack.characterName,
+          stylePrompt: pack.stylePrompt,
+          defaultBackground: pack.backgroundTheme || settings.vn.defaultBackground,
+          backgroundImage: appearance.backgroundImage || "",
+          backgroundMusic: appearance.backgroundMusic || "",
+          backgroundMusicName: appearance.backgroundMusicName || "",
+          sprites: { ...(appearance.sprites || {}) }
+        }
+      };
+      setSharedAppearance(appearance);
+      setSettings(nextSettings);
+      setDraftSettings(nextSettings);
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(sanitizeSettingsForStorage(nextSettings)));
+      setSummaryMode("role");
+      setActiveNav("start");
+    })();
+  }
+
+  function emptyAppearance(): SharedAppearance {
+    return {
+      backgroundImage: "",
+      backgroundImageRef: "",
+      backgroundMusic: "",
+      backgroundMusicRef: "",
+      backgroundMusicName: "",
+      sprites: {},
+      spriteRefs: {}
     };
-    setSettings(nextSettings);
-    setDraftSettings(nextSettings);
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(sanitizeSettingsForStorage(nextSettings)));
-    setSummaryMode("role");
-    setActiveNav("start");
+  }
+
+  async function loadAppearanceByRoleId(roleId: string): Promise<SharedAppearance> {
+    const key = roleAppearanceStorageKey(roleId);
+    const raw = localStorage.getItem(key) || (roleId === "custom" ? localStorage.getItem(SHARED_APPEARANCE_STORAGE_KEY) : "");
+    if (!raw) return emptyAppearance();
+    try {
+      const parsed = JSON.parse(raw) as SharedAppearance;
+      const spriteRefs = { ...(parsed?.spriteRefs || {}) };
+      return {
+        backgroundImageRef: parsed?.backgroundImageRef || "",
+        backgroundImage: await readMedia(parsed?.backgroundImageRef || ""),
+        backgroundMusicRef: parsed?.backgroundMusicRef || "",
+        backgroundMusicName: parsed?.backgroundMusicName || "",
+        backgroundMusic: await readMedia(parsed?.backgroundMusicRef || ""),
+        sprites: {
+          neutral: await readMedia(spriteRefs.neutral || ""),
+          happy: await readMedia(spriteRefs.happy || ""),
+          serious: await readMedia(spriteRefs.serious || ""),
+          sad: await readMedia(spriteRefs.sad || ""),
+          angry: await readMedia(spriteRefs.angry || "")
+        },
+        spriteRefs
+      };
+    } catch {
+      return emptyAppearance();
+    }
+  }
+
+  function selectRoleForWorkbench(roleId: string): void {
+    const pack = rolePacks.find((x) => x.id === roleId);
+    if (!pack) return;
+    setActiveRolePackId(pack.id);
+    void (async () => {
+      const appearance = await loadAppearanceByRoleId(pack.id);
+      const nextSettings: AppSettings = {
+        ...settings,
+        tts: {
+          ...settings.tts,
+          voice: pack.recommendedVoice || settings.tts.voice
+        },
+        vn: {
+          ...settings.vn,
+          presetId: pack.id,
+          characterName: pack.characterName,
+          stylePrompt: pack.stylePrompt,
+          defaultBackground: pack.backgroundTheme || settings.vn.defaultBackground,
+          backgroundImage: appearance.backgroundImage || "",
+          backgroundMusic: appearance.backgroundMusic || "",
+          backgroundMusicName: appearance.backgroundMusicName || "",
+          sprites: { ...(appearance.sprites || {}) }
+        }
+      };
+      setSharedAppearance(appearance);
+      setSettings(nextSettings);
+      setDraftSettings(nextSettings);
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(sanitizeSettingsForStorage(nextSettings)));
+    })();
   }
 
   function syncAppearanceFromGalgame(next: {
@@ -1151,9 +1229,10 @@ export default function HomePage(): React.ReactNode {
     backgroundMusicName?: string;
     roleId?: string;
   }): void {
+    const jobRoleId = job?.input.roleId?.trim() || "";
     const inferredHistoryRoleId =
       activeNav === "saves" && job?.input.summaryMode === "role"
-        ? rolePacks.find((x) => x.characterName === (job?.input.roleName || "").trim())?.id || ""
+        ? jobRoleId || rolePacks.find((x) => x.characterName === (job?.input.roleName || "").trim())?.id || ""
         : "";
     const roleId =
       next.roleId ||
@@ -1161,15 +1240,21 @@ export default function HomePage(): React.ReactNode {
       (summaryMode === "role" ? activeRolePackId : "") ||
       settings.vn.presetId ||
       "custom";
-    void saveSharedAppearance({
-      backgroundImage: next.backgroundImage || "",
-      backgroundImageRef: next.backgroundImageRef || sharedAppearance.backgroundImageRef || "",
-      backgroundMusic: next.backgroundMusic || sharedAppearance.backgroundMusic || "",
-      backgroundMusicRef: next.backgroundMusicRef || sharedAppearance.backgroundMusicRef || "",
-      backgroundMusicName: next.backgroundMusicName || sharedAppearance.backgroundMusicName || "",
-      sprites: { ...(next.sprites || {}) },
-      spriteRefs: { ...(sharedAppearance.spriteRefs || {}) }
-    }, roleId || "custom");
+    void (async () => {
+      const existing = await loadAppearanceByRoleId(roleId || "custom");
+      await saveSharedAppearance({
+        backgroundImage: next.backgroundImage || "",
+        backgroundImageRef: next.backgroundImageRef || "",
+        backgroundMusic: next.backgroundMusic || "",
+        backgroundMusicRef: next.backgroundMusicRef || "",
+        backgroundMusicName: next.backgroundMusicName || "",
+        sprites: {
+          ...(existing.sprites || {}),
+          ...(next.sprites || {})
+        },
+        spriteRefs: { ...(existing.spriteRefs || {}) }
+      }, roleId || "custom");
+    })();
   }
 
   function onMove(e: React.MouseEvent<HTMLElement>): void {
@@ -1262,7 +1347,7 @@ export default function HomePage(): React.ReactNode {
       const key = roleAppearanceStorageKey(activeRolePackId);
       const raw = localStorage.getItem(key) || (activeRolePackId === "custom" ? localStorage.getItem(SHARED_APPEARANCE_STORAGE_KEY) : "");
       if (!raw) {
-        const fallback: SharedAppearance = { sprites: {} };
+        const fallback: SharedAppearance = emptyAppearance();
         setSharedAppearance(fallback);
         if ((settings.vn.presetId || "custom") === activeRolePackId) {
           const nextSettings: AppSettings = {
@@ -1281,23 +1366,7 @@ export default function HomePage(): React.ReactNode {
         return;
       }
       try {
-        const parsed = JSON.parse(raw) as SharedAppearance;
-        const spriteRefs = { ...(parsed?.spriteRefs || {}) };
-        const merged: SharedAppearance = {
-          backgroundImageRef: parsed?.backgroundImageRef || "",
-          backgroundImage: await readMedia(parsed?.backgroundImageRef || ""),
-          backgroundMusicRef: parsed?.backgroundMusicRef || "",
-          backgroundMusicName: parsed?.backgroundMusicName || "",
-          backgroundMusic: await readMedia(parsed?.backgroundMusicRef || ""),
-          sprites: {
-            neutral: await readMedia(spriteRefs.neutral || ""),
-            happy: await readMedia(spriteRefs.happy || ""),
-            serious: await readMedia(spriteRefs.serious || ""),
-            sad: await readMedia(spriteRefs.sad || ""),
-            angry: await readMedia(spriteRefs.angry || "")
-          },
-          spriteRefs
-        };
+        const merged = await loadAppearanceByRoleId(activeRolePackId);
         setSharedAppearance(merged);
         if ((settings.vn.presetId || "custom") === activeRolePackId) {
           const nextSettings: AppSettings = {
@@ -1314,7 +1383,7 @@ export default function HomePage(): React.ReactNode {
           setDraftSettings(nextSettings);
         }
       } catch {
-        setSharedAppearance({ sprites: {} });
+        setSharedAppearance(emptyAppearance());
       }
     };
     void loadRoleAppearance();
@@ -1492,6 +1561,9 @@ export default function HomePage(): React.ReactNode {
                 summaryMode={summaryMode}
                 onSummaryModeChange={setSummaryMode}
                 onOpenSettings={openSettings}
+                roleOptions={rolePacks.map((x) => ({ value: x.id, label: `${x.name} · ${x.characterName}` }))}
+                selectedRoleId={activeRolePackId}
+                onRoleChange={selectRoleForWorkbench}
                 roleName={settings.vn.characterName}
                 roleStylePrompt={settings.vn.stylePrompt}
                 submitError={submitError}
@@ -1588,7 +1660,7 @@ export default function HomePage(): React.ReactNode {
             settings={settings}
             pageMode
             speaker={job.input.roleName || "解析助手"}
-            roleId={settings.vn.presetId || activeRolePackId || "custom"}
+            roleId={job?.input.roleId || settings.vn.presetId || activeRolePackId || "custom"}
             onAppearanceChange={syncAppearanceFromGalgame}
             onNotify={(text, type) => showNotice(type === "success" ? "success" : "error", text)}
           />
@@ -1617,7 +1689,7 @@ export default function HomePage(): React.ReactNode {
             settings={settings}
             pageMode
             speaker={job.input.roleName || "解析助手"}
-            roleId={rolePacks.find((x) => x.characterName === (job.input.roleName || "").trim())?.id || settings.vn.presetId || activeRolePackId || "custom"}
+            roleId={job.input.roleId || rolePacks.find((x) => x.characterName === (job.input.roleName || "").trim())?.id || settings.vn.presetId || activeRolePackId || "custom"}
             onAppearanceChange={syncAppearanceFromGalgame}
             onNotify={(text, type) => showNotice(type === "success" ? "success" : "error", text)}
           />

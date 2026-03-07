@@ -31,6 +31,7 @@ export async function POST(request: Request): Promise<Response> {
       url: body.url.trim(),
       templateId,
       summaryMode: body.summaryMode || "template",
+      roleId: body.roleId || "",
       roleName: body.roleName || "解析助手",
       customSystemPrompt: body.customSystemPrompt || "",
       modelConfig: body.modelConfig,

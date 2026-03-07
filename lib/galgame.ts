@@ -6,6 +6,7 @@
 }
 
 const lineReg = /^[-*]\s+(.+)/;
+const VN_MAX_LINES = 120;
 
 function toNaturalText(input: string): string {
   return input
@@ -44,7 +45,8 @@ export function summaryToVnLines(summary: string, speaker: string): VnLine[] {
     })
     .map(toNaturalText)
     .filter((x) => x.length > 4)
-    .slice(0, 18);
+    .flatMap((x) => x.split(/(?<=[。！？!?；;])/).map((s) => s.trim()).filter((s) => s.length > 4))
+    .slice(0, VN_MAX_LINES);
 
   const lines = extracted.map((text, i) => ({
     id: `line-${i}`,

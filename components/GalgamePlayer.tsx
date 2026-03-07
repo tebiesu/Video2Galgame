@@ -46,7 +46,7 @@ type RuntimeStore = {
   autoPlay?: boolean;
 };
 
-const GAL_RUNTIME_STORAGE_KEY = "videofetch.gal.runtime.shared.v1";
+const GAL_RUNTIME_STORAGE_KEY = "videofetch.gal.runtime.v1";
 
 function UploadField({
   label,
@@ -79,6 +79,7 @@ function UploadField({
 }
 
 export function GalgamePlayer({ summary, settings, pageMode = false, speaker, roleId, onAppearanceChange, onNotify }: Props): React.ReactNode {
+  const runtimeStorageKey = `${GAL_RUNTIME_STORAGE_KEY}.${roleId || "custom"}`;
   const speakerName = (speaker || settings.vn.characterName || "解析助手").trim();
   const lines = useMemo(() => summaryToVnLines(summary, speakerName), [summary, speakerName]);
   const [lineIndex, setLineIndex] = useState(0);
@@ -99,6 +100,14 @@ export function GalgamePlayer({ summary, settings, pageMode = false, speaker, ro
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
   const voiceTokenRef = useRef(0);
 
+  useEffect(() => {
+    try {
+      localStorage.removeItem("videofetch.gal.runtime.shared.v1");
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const current = lines[Math.min(lineIndex, Math.max(0, lines.length - 1))];
   const expression = manualExpression === "auto" ? current.expression : manualExpression;
   const currentSprite = sprites[expression];
@@ -110,7 +119,7 @@ export function GalgamePlayer({ summary, settings, pageMode = false, speaker, ro
     const roleBgmName = settings.vn.backgroundMusicName || "";
     const init = async (): Promise<void> => {
       try {
-      const raw = localStorage.getItem(GAL_RUNTIME_STORAGE_KEY);
+      const raw = localStorage.getItem(runtimeStorageKey);
       if (!raw) {
         setSprites({ ...roleSprites });
         setCustomBg(roleBackground);
@@ -147,7 +156,7 @@ export function GalgamePlayer({ summary, settings, pageMode = false, speaker, ro
     }
     };
     void init();
-  }, [settings.vn.backgroundImage, settings.vn.sprites, settings.vn.backgroundMusic, settings.vn.backgroundMusicName]);
+  }, [settings.vn.backgroundImage, settings.vn.sprites, settings.vn.backgroundMusic, settings.vn.backgroundMusicName, runtimeStorageKey]);
 
   useEffect(() => {
     setTyped("");
@@ -191,14 +200,14 @@ export function GalgamePlayer({ summary, settings, pageMode = false, speaker, ro
         bgmPreset,
         autoPlay: playVoice
       };
-      localStorage.setItem(GAL_RUNTIME_STORAGE_KEY, JSON.stringify(payload));
+      localStorage.setItem(runtimeStorageKey, JSON.stringify(payload));
     } catch (err) {
       if (isQuotaExceeded(err)) {
         if (onNotify) onNotify("GalGame 资源保存失败：本地空间不足，请上传更小图片。", "error");
         else window.alert("GalGame 资源保存失败：本地空间不足，请上传更小的背景图或立绘。");
       }
     }
-  }, [sprites, customBg, customBgRef, customBgName, uploadedBgmRef, uploadedBgmName, bgmPreset, playVoice]);
+  }, [sprites, customBg, customBgRef, customBgName, uploadedBgmRef, uploadedBgmName, bgmPreset, playVoice, runtimeStorageKey]);
 
   function stopCurrentVoice(): void {
     voiceTokenRef.current += 1;

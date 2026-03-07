@@ -14,6 +14,9 @@ interface Props {
   summaryMode: "template" | "role";
   onSummaryModeChange: (mode: "template" | "role") => void;
   onOpenSettings: () => void;
+  roleOptions: Array<{ value: string; label: string }>;
+  selectedRoleId: string;
+  onRoleChange: (id: string) => void;
   roleName: string;
   roleStylePrompt: string;
   submitError?: string;
@@ -33,6 +36,9 @@ export function InputPanel({
   summaryMode,
   onSummaryModeChange,
   onOpenSettings,
+  roleOptions,
+  selectedRoleId,
+  onRoleChange,
   roleName,
   roleStylePrompt,
   submitError
@@ -145,6 +151,15 @@ export function InputPanel({
               </>
             ) : (
               <>
+                <label className="field">
+                  <span>选择角色</span>
+                  <FancySelect
+                    value={selectedRoleId}
+                    options={roleOptions}
+                    onChange={onRoleChange}
+                    disabled={disabled}
+                  />
+                </label>
                 <p className="muted">当前角色：{roleName || "解析助手"}</p>
                 <p className="muted">角色风格词：{roleStylePrompt?.trim() ? roleStylePrompt : "未设置，将按默认角色口吻输出。"}</p>
                 <p className="muted mode-config-desc">你在下方填写的“自定义系统提示词”会拼接在角色风格词后一起生效。</p>
