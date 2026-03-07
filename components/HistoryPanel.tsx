@@ -29,22 +29,57 @@ export function HistoryPanel({ items, currentId, onPick, onRefresh, className = 
   }
 
   return (
-    <aside className={`panel history-panel ${className}`.trim()}>
-      <div className="history-head">
-        <h3 className="panel-subtitle">历史任务</h3>
-        {onRefresh ? <button className="ghost-btn mini" onClick={onRefresh}>刷新</button> : null}
+    <aside className={`animate-ios ${className}`.trim()}>
+      <div className="history-head" style={{ marginBottom: "20px" }}>
+        <h3 className="ba-section-title">历史任务</h3>
+        {onRefresh ? (
+          <button className="ba-button" style={{ height: "32px", padding: "0 12px", fontSize: "12px", background: "var(--ba-blue-light)", color: "var(--ba-blue)" }} onClick={onRefresh}>
+            🔄 刷新
+          </button>
+        ) : null}
       </div>
-      <p className="muted">可回看每次解析输入、状态和产出。</p>
-      <div className="history-list">
-        {items.length === 0 ? <p className="muted">暂无历史记录</p> : null}
+      <div className="history-list" style={{ display: "grid", gap: "12px" }}>
+        {items.length === 0 ? <p className="muted" style={{ textAlign: "center", padding: "40px 0" }}>暂无任务记录</p> : null}
         {items.map((job) => {
           const active = currentId === job.id;
           return (
-            <button key={job.id} className={`history-item ${active ? "active" : ""}`} onClick={() => onPick(job.id)}>
-              <span className="history-platform">{job.input.platform.toUpperCase()}</span>
-              <strong className="history-title">{pickTitle(job)}</strong>
-              <span className="history-url">{job.input.url}</span>
-              <span className={`history-status state-${job.status}`}>{job.status}</span>
+            <button
+              key={job.id}
+              className="animate-ios active-shrink"
+              style={{
+                display: "grid",
+                textAlign: "left",
+                padding: "16px",
+                borderRadius: "18px",
+                border: active ? "2px solid var(--ba-blue)" : "1px solid var(--ba-border)",
+                background: active ? "var(--ba-white)" : "rgba(255,255,255,0.5)",
+                boxShadow: active ? "0 8px 24px rgba(0, 163, 255, 0.15)" : "none",
+                cursor: "pointer",
+                position: "relative",
+                overflow: "hidden"
+              }}
+              onClick={() => onPick(job.id)}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                <span style={{ fontSize: "10px", fontWeight: "800", color: "var(--ba-blue)", background: "var(--ba-blue-light)", padding: "2px 8px", borderRadius: "6px" }}>
+                  {job.input.platform.toUpperCase()}
+                </span>
+                <span style={{ 
+                  fontSize: "10px", 
+                  padding: "2px 8px", 
+                  borderRadius: "6px",
+                  background: job.status === "completed" ? "#E6F9F1" : job.status === "failed" ? "#FFF0F3" : "#FFF9E6",
+                  color: job.status === "completed" ? "#14865F" : job.status === "failed" ? "#C73B58" : "#8F6700"
+                }}>
+                  {job.status}
+                </span>
+              </div>
+              <strong style={{ fontSize: "15px", color: "var(--ba-text)", marginBottom: "4px", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {pickTitle(job)}
+              </strong>
+              <span style={{ fontSize: "12px", color: "var(--ba-text-soft)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", opacity: 0.7 }}>
+                {job.input.url}
+              </span>
             </button>
           );
         })}

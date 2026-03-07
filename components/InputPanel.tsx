@@ -87,30 +87,47 @@ export function InputPanel({
   }
 
   return (
-    <form className="panel stack-lg hover-float kawaii-panel" onSubmit={submitForm}>
+    <form className="ba-card animate-ios stack-lg" onSubmit={submitForm}>
       <div className="stack-sm">
-        <h2 className="panel-title">视频输入</h2>
-        <p className="muted">支持 YouTube / Bilibili 链接，自动解析、转写并生成 Markdown 总结。</p>
+        <h2 className="ba-section-title">视频输入</h2>
+        <p className="muted" style={{ fontSize: "14px" }}>支持 YouTube / Bilibili 链接，自动解析、转写并生成总结。</p>
       </div>
 
       {!providerReady ? (
-        <p className="warn-text">Provider 未配置完整，请先在「设置」中填写 Base URL / API Key / Model。</p>
+        <div className="ba-glass" style={{ padding: "12px", borderRadius: "12px", border: "1px solid var(--ba-pink)", color: "var(--ba-pink)", fontSize: "13px" }}>
+          ⚠️ Provider 未配置完整，请先在「系统设置」中填写。
+        </div>
       ) : null}
-      {submitError ? <p className="error-text">提交失败：{submitError}</p> : null}
+      {submitError ? <div className="error-text" style={{ fontSize: "13px" }}>提交失败：{submitError}</div> : null}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+        <label className="field">
+          <span className="ba-section-title">解析平台</span>
+          <FancySelect
+            value={platform}
+            options={platformOptions}
+            onChange={(v) => setPlatform(v as Platform)}
+            disabled={disabled}
+          />
+        </label>
+
+        <label className="field">
+          <span className="ba-section-title">总结模式</span>
+          <div className="switch-row mode-switch-row" style={{ gap: "8px" }}>
+            <button type="button" className={`ba-button ${summaryMode === "template" ? "ba-button-primary" : ""}`} style={{ flex: 1, height: "40px", fontSize: "13px", background: summaryMode === "template" ? "" : "var(--ba-bg)" }} onClick={() => onSummaryModeChange("template")}>
+              模板模式
+            </button>
+            <button type="button" className={`ba-button ${summaryMode === "role" ? "ba-button-primary" : ""}`} style={{ flex: 1, height: "40px", fontSize: "13px", background: summaryMode === "role" ? "" : "var(--ba-bg)" }} onClick={() => onSummaryModeChange("role")}>
+              角色模式
+            </button>
+          </div>
+        </label>
+      </div>
 
       <label className="field">
-        <span>平台</span>
-        <FancySelect
-          value={platform}
-          options={platformOptions}
-          onChange={(v) => setPlatform(v as Platform)}
-          disabled={disabled}
-        />
-      </label>
-
-      <label className="field">
-        <span>视频 URL</span>
+        <span className="ba-section-title">视频 URL</span>
         <input
+          style={{ height: "48px", borderRadius: "14px", border: "1px solid var(--ba-border)" }}
           type="url"
           placeholder="https://www.youtube.com/watch?v=..."
           value={url}
@@ -120,26 +137,14 @@ export function InputPanel({
         />
       </label>
 
-      <label className="field">
-        <span>总结模式</span>
-        <div className="switch-row mode-switch-row">
-          <button type="button" className={`switch-chip ${summaryMode === "template" ? "on" : ""}`} onClick={() => onSummaryModeChange("template")}>
-            <span className="dot" /> 模板总结
-          </button>
-          <button type="button" className={`switch-chip ${summaryMode === "role" ? "on" : ""}`} onClick={() => onSummaryModeChange("role")}>
-            <span className="dot" /> 角色总结
-          </button>
-        </div>
-      </label>
-
-      <section className="field mode-config-card">
-        <span>{summaryMode === "template" ? "模板总结配置" : "角色总结配置"}</span>
+      <section className="field ba-glass animate-ios" style={{ padding: "16px", borderRadius: "16px" }}>
+        <span className="ba-section-title">{summaryMode === "template" ? "模板总结配置" : "角色总结配置"}</span>
         <div className="mode-config-body">
           <div className="mode-config-scroll">
             {summaryMode === "template" ? (
               <>
                 <label className="field">
-                  <span>预设模板</span>
+                  <span style={{ fontSize: "12px", color: "var(--ba-text-soft)" }}>预设模板</span>
                   <FancySelect
                     value={templateId}
                     options={TEMPLATES.map((tpl) => ({ value: tpl.id, label: tpl.name }))}
@@ -147,12 +152,12 @@ export function InputPanel({
                     disabled={disabled}
                   />
                 </label>
-                <p className="muted mode-config-desc">{selectedTemplate.description}</p>
+                <p className="muted" style={{ fontSize: "12px", marginTop: "8px" }}>{selectedTemplate.description}</p>
               </>
             ) : (
               <>
                 <label className="field">
-                  <span>选择角色</span>
+                  <span style={{ fontSize: "12px", color: "var(--ba-text-soft)" }}>选择角色</span>
                   <FancySelect
                     value={selectedRoleId}
                     options={roleOptions}
@@ -160,45 +165,46 @@ export function InputPanel({
                     disabled={disabled}
                   />
                 </label>
-                <p className="muted">当前角色：{roleName || "解析助手"}</p>
-                <p className="muted">角色风格词：{roleStylePrompt?.trim() ? roleStylePrompt : "未设置，将按默认角色口吻输出。"}</p>
-                <p className="muted mode-config-desc">你在下方填写的“自定义系统提示词”会拼接在角色风格词后一起生效。</p>
+                <div style={{ marginTop: "8px", fontSize: "12px", display: "grid", gap: "4px" }}>
+                  <p className="muted">当前角色：<strong>{roleName || "解析助手"}</strong></p>
+                  <p className="muted" style={{ opacity: 0.8 }}>风格：{roleStylePrompt?.trim() ? roleStylePrompt.slice(0, 40) + "..." : "默认风格"}</p>
+                </div>
               </>
             )}
           </div>
         </div>
-        <div className="mode-config-actions">
-          <button type="button" className="ghost-btn mini" onClick={onOpenSettings}>打开设置中心</button>
-        </div>
       </section>
 
       <label className="field">
-        <span>{summaryMode === "role" ? "追加系统提示词（与角色风格词拼接）" : "自定义系统提示词"}</span>
+        <span className="ba-section-title">{summaryMode === "role" ? "追加提示词" : "系统提示词"}</span>
         <textarea
+          style={{ borderRadius: "14px", border: "1px solid var(--ba-border)", padding: "12px" }}
           value={customSystemPrompt}
           onChange={(e) => setCustomSystemPrompt(e.target.value)}
-          rows={4}
-          placeholder={summaryMode === "role" ? "例如：先给结论，再给证据，最后给行动建议" : "例如：重点关注商业模式与增长策略"}
+          rows={3}
+          placeholder={summaryMode === "role" ? "例如：先给结论，再给证据..." : "例如：重点关注商业模式..."}
           disabled={disabled}
         />
       </label>
 
-      <details className="soft-group">
-        <summary>高级解析参数</summary>
-        <div className="stack-sm">
+      <details className="ba-glass" style={{ borderRadius: "14px", padding: "12px" }}>
+        <summary style={{ cursor: "pointer", fontSize: "13px", fontWeight: "700", color: "var(--ba-blue)" }}>高级解析参数</summary>
+        <div className="stack-sm" style={{ marginTop: "12px" }}>
           <div className="split">
             <label className="field">
-              <span>字幕语言</span>
+              <span style={{ fontSize: "12px" }}>字幕语言</span>
               <input
+                style={{ height: "40px", fontSize: "13px" }}
                 value={lang}
                 onChange={(e) => setLang(e.target.value)}
-                placeholder="en / zh-Hans / ai-zh"
+                placeholder="en / zh-Hans"
                 disabled={disabled}
               />
             </label>
             <label className="field">
-              <span>快照时间点（逗号）</span>
+              <span style={{ fontSize: "12px" }}>快照时间点</span>
               <input
+                style={{ height: "40px", fontSize: "13px" }}
                 value={snapshots}
                 onChange={(e) => setSnapshots(e.target.value)}
                 placeholder="30,60,90"
@@ -207,42 +213,19 @@ export function InputPanel({
             </label>
           </div>
 
-          <div className="split">
-            <label className="field">
-              <span>评论数量</span>
-              <input
-                type="number"
-                min={0}
-                value={commentNum}
-                onChange={(e) => setCommentNum(e.target.value)}
-                disabled={disabled}
-              />
-            </label>
-            <label className="field">
-              <span>弹幕数量（B站）</span>
-              <input
-                type="number"
-                min={0}
-                value={danmakuNum}
-                onChange={(e) => setDanmakuNum(e.target.value)}
-                disabled={disabled}
-              />
-            </label>
-          </div>
-
-          <div className="switch-row">
-            <button type="button" className={`switch-chip ${needSubs ? "on" : ""}`} onClick={() => setNeedSubs((x) => !x)}>
-              <span className="dot" /> 获取字幕
+          <div className="switch-row" style={{ gap: "8px" }}>
+            <button type="button" className={`ba-button ${needSubs ? "ba-button-primary" : ""}`} style={{ flex: 1, height: "36px", fontSize: "12px", background: needSubs ? "" : "var(--ba-bg)" }} onClick={() => setNeedSubs((x) => !x)}>
+              获取字幕
             </button>
-            <button type="button" className={`switch-chip ${needPbp ? "on" : ""}`} onClick={() => setNeedPbp((x) => !x)}>
-              <span className="dot" /> 获取高能时间点（B站）
+            <button type="button" className={`ba-button ${needPbp ? "ba-button-primary" : ""}`} style={{ flex: 1, height: "36px", fontSize: "12px", background: needPbp ? "" : "var(--ba-bg)" }} onClick={() => setNeedPbp((x) => !x)}>
+              高能点
             </button>
           </div>
         </div>
       </details>
 
-      <button type="submit" className="primary-btn" disabled={disabled || !providerReady}>
-        {disabled ? "处理中..." : "开始解析与总结"}
+      <button type="submit" className="ba-button ba-button-primary active-shrink" style={{ width: "100%", height: "54px", fontSize: "16px" }} disabled={disabled || !providerReady}>
+        {disabled ? "SCHALE 解析中..." : "开始解析与总结"}
       </button>
     </form>
   );
